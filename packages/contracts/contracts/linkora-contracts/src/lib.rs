@@ -286,6 +286,8 @@ pub struct PoolThresholdUpdatedEvent {
 #[contractevent]
 #[derive(Clone)]
 pub struct FeeUpdatedEvent {
+    #[topic]
+    pub name: Symbol,
     pub old_fee_bps: u32,
     pub new_fee_bps: u32,
 }
@@ -293,10 +295,11 @@ pub struct FeeUpdatedEvent {
 #[contractevent]
 #[derive(Clone)]
 pub struct TreasuryUpdatedEvent {
+    #[topic]
+    pub name: Symbol,
     pub old_treasury: Address,
     pub new_treasury: Address,
 }
-
 // ── Contract ──────────────────────────────────────────────────────────────────
 
 #[contract]
@@ -446,6 +449,32 @@ impl LinkoraContract {
             .instance()
             .get(&PROFILE_CREATED_CT)
             .unwrap_or(0)
+    }
+
+    pub fn delete_profile(env: Env, user: Address) {
+        user.require_auth();
+        let key = StorageKey::Profile(user.clone());
+        let profile: Profile = env
+            .storage()
+            .persistent()
+            .get(&key)
+            .unwrap_or_else(|| panic!("profile does not exist"));
+
+        env.storage()
+            .persistent()
+            .remove(&StorageKey::UsernameIndex(profile.username));
+        env.storage().persistent().remove(&key);
+
+        let count: u64 = env
+            .storage()
+            .instance()
+            .get(&PROFILE_CREATED_CT)
+            .unwrap_or(0);
+        if count > 0 {
+            env.storage()
+                .instance()
+                .set(&PROFILE_CREATED_CT, &(count - 1));
+        }
     }
 
     pub fn get_address_by_username(env: Env, username: String) -> Option<Address> {
@@ -1059,6 +1088,7 @@ impl LinkoraContract {
         let old_fee_bps = Self::get_fee_bps(env.clone());
         env.storage().instance().set(&FEE_BPS, &fee_bps);
         FeeUpdatedEvent {
+            name: symbol_short!("fee_upd"),
             old_fee_bps,
             new_fee_bps: fee_bps,
         }
@@ -1070,6 +1100,7 @@ impl LinkoraContract {
         let old_treasury = Self::get_treasury(env.clone()).expect("treasury not set");
         env.storage().instance().set(&TREASURY, &treasury);
         TreasuryUpdatedEvent {
+            name: symbol_short!("treas_upd"),
             old_treasury,
             new_treasury: treasury,
         }

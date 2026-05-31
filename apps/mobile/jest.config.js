@@ -1,12 +1,14 @@
 module.exports = {
-    preset: 'react-native',
-    transform: {
-        '^.+\\.(ts|tsx)$': 'ts-jest',
-    },
-    testEnvironment: 'node',
-    moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
-    transformIgnorePatterns: [
-        'node_modules/(?!(react-native|@react-native|expo-secure-store|@stellar/wallet-kit)/)',
-    ],
-    setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
+  testEnvironment: 'node',
+  transform: {
+    '^.+\\.(ts|tsx|js|jsx)$': ['babel-jest', { configFile: './babel.config.js' }],
+  },
+  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
+  moduleNameMapper: {
+    '^react-native$': '<rootDir>/jest.react-native-mock.js',
+    '^expo-router$': '<rootDir>/jest.expo-router-mock.js',
+    '^@stellar/wallet-kit$': '<rootDir>/jest.wallet-kit-mock.js',
+  },
+  transformIgnorePatterns: ['/node_modules/'],
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
 }

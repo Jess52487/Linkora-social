@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, type CSSProperties } from "react";
+import { useState, useCallback, useMemo, type CSSProperties } from "react";
 import type { PoolData, TokenMeta } from "../../hooks/usePools";
 import { formatTokenAmount, parseTokenAmount, STELLAR_KEY_RE } from "../../hooks/usePools";
 import { useWithdraw } from "../../hooks/usePoolContract";
@@ -31,7 +31,7 @@ export function WithdrawTab({ pool, tokenMeta, currentUser, onSuccess }: Withdra
   // For M-of-N: in a real implementation, signers would be collected off-chain
   // (e.g., via a pending-signatures queue). Here we simulate the current user
   // as the initiating signer.
-  const signers = [currentUser];
+  const signers = useMemo(() => [currentUser], [currentUser]);
   const signerCount = signers.length;
   const needsMoreSigners = signerCount < pool.threshold;
 

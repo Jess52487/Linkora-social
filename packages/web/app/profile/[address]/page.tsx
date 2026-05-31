@@ -99,6 +99,68 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
+function ProfileHeader({
+  address,
+  username,
+  creatorToken,
+  followerCount,
+  followingCount,
+  isOwnProfile,
+  followState,
+  onFollow,
+  onUnfollow,
+}: {
+  address: string;
+  username: string;
+  creatorToken: string;
+  followerCount: number;
+  followingCount: number;
+  isOwnProfile: boolean;
+  followState: FollowState;
+  onFollow: () => void;
+  onUnfollow: () => void;
+}) {
+  return (
+    <section style={styles.header}>
+      <div style={styles.avatarLg} aria-hidden="true" />
+      <div style={styles.meta}>
+        <div style={styles.usernameRow}>
+          <h1 style={styles.username}>@{username}</h1>
+          {isOwnProfile && (
+            <a href={`/profile/${address}/edit`} style={styles.editLink}>
+              Edit profile
+            </a>
+          )}
+        </div>
+        <div style={styles.addressRow}>
+          <code style={styles.address}>{formatAddress(address)}</code>
+          <CopyButton text={address} />
+        </div>
+        <CreatorTokenBadge token={creatorToken} />
+        <div style={styles.statsRow}>
+          <span style={styles.stat}>
+            <strong>{followerCount}</strong>
+            <span style={styles.statLabel}> Followers</span>
+          </span>
+          <span style={styles.stat}>
+            <strong>{followingCount}</strong>
+            <span style={styles.statLabel}> Following</span>
+          </span>
+        </div>
+      </div>
+      {!isOwnProfile && (
+        <div style={styles.actions}>
+          <FollowButton
+            state={followState}
+            onFollow={onFollow}
+            onUnfollow={onUnfollow}
+          />
+        </div>
+      )}
+    </section>
+  );
+}
+
 export default function ProfilePage() {
   const params = useParams();
   const address = params?.address as string;

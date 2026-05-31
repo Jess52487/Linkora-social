@@ -66,7 +66,7 @@ export function CreatePost({ onSuccess, compact = false }: CreatePostProps) {
         setStatus("error");
       }
     },
-    [content, isDisabled, publicKey, onSuccess],
+    [isDisabled, publicKey, onSuccess],
   );
 
   const handleCreateAnother = () => {

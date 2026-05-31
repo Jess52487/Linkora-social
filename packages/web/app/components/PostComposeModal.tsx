@@ -115,7 +115,7 @@ export function PostComposeModal({
         });
       }
     },
-    [content, isDisabled, publicKey, onSuccess]
+    [isDisabled, publicKey, onSuccess]
   );
 
   const handleCloseSuccess = () => {

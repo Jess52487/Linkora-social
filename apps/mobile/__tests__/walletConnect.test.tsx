@@ -1,5 +1,6 @@
 import React from "react";
 import { render, act, waitFor } from "@testing-library/react-native";
+import { Text, TouchableOpacity, View } from "react-native";
 import { WalletProvider, useWallet } from "../hooks/useWallet";
 import * as secureStorage from "../utils/secureStorage";
 
@@ -36,30 +37,34 @@ const mockWalletKit = {
   onNetworkChange: jest.fn(),
 };
 
-jest.mock("@stellar/wallet-kit", () => ({
-  WalletKit: jest.fn().mockImplementation(() => mockWalletKit),
-  NETWORK: {
-    TESTNET: "TESTNET",
-    MAINNET: "MAINNET",
-  },
-}));
+jest.mock(
+  "@stellar/wallet-kit",
+  () => ({
+    WalletKit: jest.fn().mockImplementation(() => mockWalletKit),
+    NETWORK: {
+      TESTNET: "TESTNET",
+      MAINNET: "MAINNET",
+    },
+  }),
+  { virtual: true }
+);
 
 // Test component to access wallet context
 const TestComponent: React.FC = () => {
   const { state, wallet, connect, disconnect, error } = useWallet();
 
   return (
-    <>
-      <div testID="wallet-state">{state}</div>
-      <div testID="wallet-address">{wallet.address || "null"}</div>
-      <div testID="wallet-error">{error || "null"}</div>
-      <button testID="connect-btn" onPress={connect}>
-        Connect
-      </button>
-      <button testID="disconnect-btn" onPress={disconnect}>
-        Disconnect
-      </button>
-    </>
+    <View>
+      <Text testID="wallet-state">{state}</Text>
+      <Text testID="wallet-address">{wallet.address || "null"}</Text>
+      <Text testID="wallet-error">{error || "null"}</Text>
+      <TouchableOpacity testID="connect-btn" onPress={() => connect()}>
+        <Text>Connect</Text>
+      </TouchableOpacity>
+      <TouchableOpacity testID="disconnect-btn" onPress={disconnect}>
+        <Text>Disconnect</Text>
+      </TouchableOpacity>
+    </View>
   );
 };
 
@@ -77,12 +82,17 @@ describe("Wallet Connect Integration Tests", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockSecureStore.__resetStore();
+    globalThis.__LINKORA_WALLET_KIT__ = mockWalletKit;
 
     // Reset wallet kit mocks
     mockWalletKit.connect.mockReset();
     mockWalletKit.disconnect.mockReset();
     mockWalletKit.getPublicKey.mockReset();
     mockWalletKit.isConnected.mockReset();
+  });
+
+  afterEach(() => {
+    delete globalThis.__LINKORA_WALLET_KIT__;
   });
 
   describe("Connect Flow", () => {
@@ -98,9 +108,13 @@ describe("Wallet Connect Integration Tests", () => {
       expect(getByTestId("wallet-state").children[0]).toBe("loading");
       expect(getByTestId("wallet-address").children[0]).toBe("null");
 
+      await waitFor(() => {
+        expect(getByTestId("wallet-state").children[0]).toBe("disconnected");
+      });
+
       // Trigger connect
       await act(async () => {
-        getByTestId("connect-btn").props.onPress();
+        await getByTestId("connect-btn").props.onPress();
       });
 
       // Wait for connection to complete
@@ -180,7 +194,7 @@ describe("Wallet Connect Integration Tests", () => {
 
       // Trigger disconnect
       await act(async () => {
-        getByTestId("disconnect-btn").props.onPress();
+        await getByTestId("disconnect-btn").props.onPress();
       });
 
       // Wait for disconnection to complete
@@ -216,7 +230,7 @@ describe("Wallet Connect Integration Tests", () => {
 
       // Trigger disconnect (should be safe to call)
       await act(async () => {
-        getByTestId("disconnect-btn").props.onPress();
+        await getByTestId("disconnect-btn").props.onPress();
       });
 
       // State should remain disconnected
@@ -236,9 +250,13 @@ describe("Wallet Connect Integration Tests", () => {
 
       const { getByTestId } = render(<TestApp />);
 
+      await waitFor(() => {
+        expect(getByTestId("wallet-state").children[0]).toBe("disconnected");
+      });
+
       // Trigger connect
       await act(async () => {
-        getByTestId("connect-btn").props.onPress();
+        await getByTestId("connect-btn").props.onPress();
       });
 
       // Wait for error state
@@ -262,9 +280,13 @@ describe("Wallet Connect Integration Tests", () => {
 
       const { getByTestId } = render(<TestApp />);
 
+      await waitFor(() => {
+        expect(getByTestId("wallet-state").children[0]).toBe("disconnected");
+      });
+
       // Trigger connect
       await act(async () => {
-        getByTestId("connect-btn").props.onPress();
+        await getByTestId("connect-btn").props.onPress();
       });
 
       // Wait for error state
@@ -283,9 +305,13 @@ describe("Wallet Connect Integration Tests", () => {
 
       const { getByTestId } = render(<TestApp />);
 
+      await waitFor(() => {
+        expect(getByTestId("wallet-state").children[0]).toBe("disconnected");
+      });
+
       // Trigger connect
       await act(async () => {
-        getByTestId("connect-btn").props.onPress();
+        await getByTestId("connect-btn").props.onPress();
       });
 
       // Wait for error state
@@ -307,9 +333,13 @@ describe("Wallet Connect Integration Tests", () => {
 
       const { getByTestId } = render(<TestApp />);
 
+      await waitFor(() => {
+        expect(getByTestId("wallet-state").children[0]).toBe("disconnected");
+      });
+
       // First connection attempt fails
       await act(async () => {
-        getByTestId("connect-btn").props.onPress();
+        await getByTestId("connect-btn").props.onPress();
       });
 
       await waitFor(() => {
@@ -318,7 +348,7 @@ describe("Wallet Connect Integration Tests", () => {
 
       // Second connection attempt succeeds
       await act(async () => {
-        getByTestId("connect-btn").props.onPress();
+        await getByTestId("connect-btn").props.onPress();
       });
 
       await waitFor(() => {

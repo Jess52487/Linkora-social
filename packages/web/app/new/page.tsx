@@ -77,7 +77,7 @@ export default function NewPostPage() {
         });
       }
     },
-    [content, isDisabled, publicKey]
+    [isDisabled, publicKey]
   );
 
   const handleTryAgain = () => {

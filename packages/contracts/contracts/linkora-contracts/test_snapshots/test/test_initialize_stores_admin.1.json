@@ -148,6 +148,9 @@
             "topics": [
               {
                 "symbol": "fee_updated_event"
+              },
+              {
+                "symbol": "fee_upd"
               }
             ],
             "data": {
