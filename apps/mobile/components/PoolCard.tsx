@@ -1,5 +1,8 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useMemo } from "react";
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+
+import { useTheme } from "../theme/useTheme";
+import { PoolCardSkeleton } from "./skeletons/PoolCardSkeleton";
 
 interface PoolCardProps {
   id: string;
@@ -22,17 +25,11 @@ export const PoolCard: React.FC<PoolCardProps> = ({
   isLoading = false,
   onPress,
 }) => {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   if (isLoading) {
-    return (
-      <View style={[styles.container, styles.loadingContainer]}>
-        <View style={[styles.loadingBar, styles.nameLoading]} />
-        <View style={[styles.loadingBar, styles.descriptionLoading]} />
-        <View style={styles.statsContainer}>
-          <View style={[styles.loadingBar, styles.statLoading]} />
-          <View style={[styles.loadingBar, styles.statLoading]} />
-        </View>
-      </View>
-    );
+    return <PoolCardSkeleton />;
   }
 
   return (

@@ -25,9 +25,11 @@ export type WalletState = "loading" | "disconnected" | "connecting" | "connected
 
 export type WalletProviderKind = "freighter" | "walletconnect";
 
+export type WalletNetwork = "TESTNET" | "MAINNET";
+
 export interface WalletInfo {
   address: string | null;
-  network: string | null;
+  network: WalletNetwork | null;
   provider: WalletProviderKind | null;
 }
 
@@ -133,6 +135,8 @@ export interface WalletContextType {
   state: WalletState;
   /** Wallet address and network info */
   wallet: WalletInfo;
+  /** Active network preference */
+  network: WalletNetwork;
   /** Last error message, if any */
   error: string | null;
   /** Initiate wallet connection */
@@ -141,6 +145,8 @@ export interface WalletContextType {
   disconnect: () => Promise<void>;
   /** Re-check connection state (e.g. after app foreground) */
   refresh: () => Promise<void>;
+  /** Update the active network preference */
+  setNetwork: (network: WalletNetwork) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -160,6 +166,7 @@ interface WalletProviderProps {
 export function WalletProvider({ children }: WalletProviderProps): JSX.Element {
   const { network: selectedNetwork } = useNetworkContext();
   const [state, setState] = useState<WalletState>("loading");
+  const [network, setNetwork] = useState<WalletNetwork>("TESTNET");
   const [wallet, setWallet] = useState<WalletInfo>({
     address: null,
     network: null,
@@ -378,10 +385,12 @@ export function WalletProvider({ children }: WalletProviderProps): JSX.Element {
   const value: WalletContextType = {
     state,
     wallet,
+    network,
     error,
     connect,
     disconnect,
     refresh,
+    setNetwork,
   };
 
   return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;

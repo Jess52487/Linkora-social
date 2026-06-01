@@ -1,6 +1,9 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { useRouter } from "expo-router";
+
+import { useTheme } from "../theme/useTheme";
+import { PostCardSkeleton as SharedPostCardSkeleton } from "./skeletons/PostCardSkeleton";
 
 export interface Post {
   id: number | string;
@@ -61,13 +64,16 @@ function normalizePost(props: PostCardProps): { post: Post; timeLabel?: string }
 }
 
 export function PostCard(props: PostCardProps) {
+  const { theme } = useTheme();
   const router = useRouter();
   const { post, timeLabel } = normalizePost(props);
   const onPress =
     props.onPress ?? (() => router.push(`/post/${post.id}` as Parameters<typeof router.push>[0]));
 
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   if ("isLoading" in props && props.isLoading) {
-    return <PostCardSkeleton />;
+    return <SharedPostCardSkeleton />;
   }
 
   return (
@@ -98,89 +104,77 @@ export function PostCard(props: PostCardProps) {
   );
 }
 
-export function PostCardSkeleton() {
-  return (
-    <View style={[styles.card, styles.skeleton]}>
-      <View style={styles.header}>
-        <View style={[styles.avatar, styles.skeletonBlock]} />
-        <View style={styles.meta}>
-          <View style={[styles.skeletonLine, { width: 100 }]} />
-          <View style={[styles.skeletonLine, { width: 70, marginTop: 4 }]} />
-        </View>
-      </View>
-      <View style={[styles.skeletonLine, { width: "100%", marginTop: 12 }]} />
-      <View style={[styles.skeletonLine, { width: "80%", marginTop: 6 }]} />
-    </View>
-  );
+function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
+  return StyleSheet.create({
+    card: {
+      backgroundColor: theme.colors.surface.surface1,
+      borderRadius: 12,
+      padding: 16,
+      marginHorizontal: 16,
+      marginVertical: 6,
+      borderWidth: 1,
+      borderColor: theme.colors.surface.border,
+    },
+    skeleton: {
+      opacity: 0.8,
+    },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: 10,
+    },
+    avatar: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: theme.colors.brand.primary,
+      alignItems: "center",
+      justifyContent: "center",
+      marginRight: 10,
+    },
+    avatarText: {
+      color: theme.colors.text.onBrand,
+      fontWeight: "700",
+      fontSize: 16,
+    },
+    meta: {
+      flex: 1,
+    },
+    username: {
+      color: theme.colors.text.primary,
+      fontWeight: "600",
+      fontSize: 14,
+    },
+    address: {
+      color: theme.colors.text.secondary,
+      fontSize: 11,
+      fontFamily: "monospace",
+    },
+    time: {
+      color: theme.colors.text.secondary,
+      fontSize: 11,
+    },
+    content: {
+      color: theme.colors.text.primary,
+      fontSize: 14,
+      lineHeight: 20,
+    },
+    footer: {
+      flexDirection: "row",
+      marginTop: 12,
+      gap: 16,
+    },
+    stat: {
+      color: theme.colors.text.secondary,
+      fontSize: 12,
+    },
+    skeletonBlock: {
+      backgroundColor: theme.colors.surface.surface2,
+    },
+    skeletonLine: {
+      height: 12,
+      borderRadius: 6,
+      backgroundColor: theme.colors.surface.surface2,
+    },
+  });
 }
-
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: "#1e293b",
-    borderRadius: 12,
-    padding: 16,
-    marginHorizontal: 16,
-    marginVertical: 6,
-  },
-  skeleton: {
-    opacity: 0.6,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#6366f1",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 10,
-  },
-  avatarText: {
-    color: "#fff",
-    fontWeight: "700",
-    fontSize: 16,
-  },
-  meta: {
-    flex: 1,
-  },
-  username: {
-    color: "#f1f5f9",
-    fontWeight: "600",
-    fontSize: 14,
-  },
-  address: {
-    color: "#64748b",
-    fontSize: 11,
-    fontFamily: "monospace",
-  },
-  time: {
-    color: "#64748b",
-    fontSize: 11,
-  },
-  content: {
-    color: "#cbd5e1",
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  footer: {
-    flexDirection: "row",
-    marginTop: 12,
-    gap: 16,
-  },
-  stat: {
-    color: "#64748b",
-    fontSize: 12,
-  },
-  skeletonBlock: {
-    backgroundColor: "#334155",
-  },
-  skeletonLine: {
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: "#334155",
-  },
-});

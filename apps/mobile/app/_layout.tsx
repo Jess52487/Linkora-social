@@ -7,25 +7,34 @@ import { WalletProvider } from "../context/WalletContext";
 import { useNetwork } from "../hooks/useNetwork";
 import { useWallet } from "../hooks/useWallet";
 import { parseDeepLink } from "../utils/deepLinks";
+import { ToastProvider } from "../context/ToastContext";
+import { useTheme } from "../theme/useTheme";
 
 function shortAddress(address: string): string {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
 function HeaderWalletAddress() {
+  const { theme } = useTheme();
   const router = useRouter();
   const { address, connected } = useWallet();
 
   return (
-    <TouchableOpacity
-      style={styles.headerWallet}
+      <TouchableOpacity
+      style={[
+        styles.headerWallet,
+        {
+          backgroundColor: theme.colors.surface.surface1,
+          borderColor: theme.colors.surface.border,
+        },
+      ]}
       onPress={() => router.push("/connect" as Parameters<typeof router.push>[0])}
       accessibilityRole="button"
       accessibilityLabel={
         connected && address ? `Connected wallet ${address}` : "Open wallet connection screen"
       }
     >
-      <Text style={styles.headerWalletText}>
+      <Text style={[styles.headerWalletText, { color: theme.colors.text.primary }]}>
         {connected && address ? shortAddress(address) : "Connect"}
       </Text>
     </TouchableOpacity>
@@ -75,6 +84,7 @@ function HeaderActions() {
  */
 export default function RootLayout() {
   const router = useRouter();
+  const { theme } = useTheme();
 
   useEffect(() => {
     let isMounted = true;
@@ -165,12 +175,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#1e293b",
     borderWidth: 1,
-    borderColor: "#334155",
   },
   headerWalletText: {
-    color: "#e2e8f0",
     fontSize: 12,
     fontWeight: "700",
     fontFamily: "monospace",

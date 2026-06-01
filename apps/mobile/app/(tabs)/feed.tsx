@@ -5,6 +5,7 @@ import { PostCard, PostCardSkeleton, Post } from "../../components/PostCard";
 import { EmptyState } from "../../components/states/EmptyState";
 import { ErrorState } from "../../components/states/ErrorState";
 import { useFeed } from "../../hooks/useFeed";
+import { useTheme } from "../../theme/useTheme";
 
 const SKELETON_COUNT = 4;
 
@@ -54,7 +55,7 @@ export default function FeedScreen() {
       }
       ListFooterComponent={
         loading && posts.length > 0 ? (
-          <ActivityIndicator style={styles.footer} color="#6366f1" size="small" />
+          <ActivityIndicator style={styles.footer} color={theme.colors.brand.primary} size="small" />
         ) : null
       }
       onEndReached={loadMore}
@@ -63,8 +64,8 @@ export default function FeedScreen() {
         <RefreshControl
           refreshing={loading && posts.length > 0}
           onRefresh={refresh}
-          tintColor="#6366f1"
-          colors={["#6366f1"]}
+          tintColor={theme.colors.brand.primary}
+          colors={[theme.colors.brand.primary]}
         />
       }
     />

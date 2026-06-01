@@ -89,6 +89,8 @@ async function searchCatalog(query: string): Promise<SearchResults> {
 }
 
 export default function ExploreScreen() {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -156,9 +158,13 @@ export default function ExploreScreen() {
         contentContainerStyle={[styles.content, !hasResults && styles.centerContent]}
       >
         {loading ? (
-          <View style={styles.center}>
-            <ActivityIndicator color="#6366f1" />
-            <Text style={styles.muted}>Searching...</Text>
+          <View style={styles.loadingStack}>
+            <ProfileCardSkeleton />
+            <PoolCardSkeleton />
+            <View style={styles.center}>
+              <ActivityIndicator color={theme.colors.brand.primary} />
+              <Text style={styles.muted}>Searching...</Text>
+            </View>
           </View>
         ) : error ? (
           <ErrorState message={error} onRetry={() => setSearchNonce((current) => current + 1)} />

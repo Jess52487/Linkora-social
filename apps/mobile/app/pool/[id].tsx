@@ -5,6 +5,8 @@ import { useWallet } from "../../hooks/useWallet";
 import { usePool } from "../../hooks/usePool";
 import { PoolDepositForm } from "../../components/PoolDepositForm";
 
+import { useTheme } from "../../theme/useTheme";
+
 type PoolParams = {
   id: string;
 };
