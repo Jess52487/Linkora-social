@@ -9,12 +9,31 @@ export type MiniAppManifest = {
   permissions: string[];
 };
 
+/** Thrown when the user rejects a signing request. */
+export class UserRejectedError extends Error {
+  readonly code = "USER_REJECTED" as const;
+  constructor() {
+    super("User rejected the signing request");
+    this.name = "UserRejectedError";
+  }
+}
+
 export type BridgeOptions = {
   manifest: MiniAppManifest;
-  /** Called by the host to present the native confirmation sheet. */
+
+  // --- post ---
+  /** Called by the host to present the post confirmation sheet. */
   onPostCreate: (content: string) => Promise<{ confirmed: boolean; content: string }>;
   /** Called after user confirms — submits the post to the contract. */
   submitPost: (content: string) => Promise<{ postId: number }>;
+
+  // --- wallet ---
+  /** Returns the currently connected Stellar address. */
+  getAddress: () => string;
+  /** Called by the host to present the signing confirmation sheet. */
+  onSignTransaction: (xdr: string) => Promise<{ confirmed: boolean }>;
+  /** Called after user approves — signs and returns the signed XDR. */
+  signTransaction: (xdr: string) => Promise<{ signedXdr: string }>;
 };
 
 function requirePermission(manifest: MiniAppManifest, permission: string): void {
@@ -24,7 +43,8 @@ function requirePermission(manifest: MiniAppManifest, permission: string): void 
 }
 
 export function createBridge(options: BridgeOptions) {
-  const { manifest, onPostCreate, submitPost } = options;
+  const { manifest, onPostCreate, submitPost, getAddress, onSignTransaction, signTransaction } =
+    options;
 
   return {
     post: {
@@ -41,6 +61,28 @@ export function createBridge(options: BridgeOptions) {
 
         const { postId } = await submitPost(finalContent);
         return postId;
+      },
+    },
+
+    wallet: {
+      /** Returns the connected Stellar address. Requires no special permission. */
+      getAddress(): string {
+        return getAddress();
+      },
+
+      /**
+       * Shows a native confirmation sheet for the given XDR transaction.
+       * @returns the signed XDR string on approval.
+       * @throws {UserRejectedError} if the user rejects.
+       */
+      async signTransaction(xdr: string): Promise<string> {
+        requirePermission(manifest, "wallet.sign");
+
+        const { confirmed } = await onSignTransaction(xdr);
+        if (!confirmed) throw new UserRejectedError();
+
+        const { signedXdr } = await signTransaction(xdr);
+        return signedXdr;
       },
     },
   };
