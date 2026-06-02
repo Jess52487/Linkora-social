@@ -1,3 +1,4 @@
+// Post detail screen — shows full content, like count, tip total, author info.
 import React, { useMemo } from "react";
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
