@@ -10,229 +10,181 @@ const mockSetTimeout = jest.fn();
 jest.mock("@stellar/stellar-sdk", () => ({
   rpc: {
     Server: jest.fn(),
-    Api: {
-      isSimulationError: jest.fn(),
-      isSimulationSuccess: jest.fn(),
-    },
+    Api: { isSimulationError: jest.fn(), isSimulationSuccess: jest.fn() },
   },
-  Contract: jest.fn(() => ({
-    call: mockCall,
-  })),
+  Contract: jest.fn(() => ({ call: mockCall })),
   nativeToScVal: jest.fn((val: unknown, opts?: unknown) => ({
     _type: "scval",
     _val: val,
     _opts: opts,
   })),
   scValToNative: jest.fn(),
-  TransactionBuilder: jest.fn(() => ({
-    addOperation: mockAddOperation,
-  })),
+  TransactionBuilder: jest.fn(() => ({ addOperation: mockAddOperation })),
   Account: jest.fn(),
-  Keypair: {
-    random: jest.fn(() => ({
-      publicKey: () => "GWRITEKEYXXXXXXXXXXXXXXXXXXXXXXXXXX",
-    })),
-  },
+  Keypair: { random: jest.fn(() => ({ publicKey: () => "GWRITEKEYXXXXXXXXXXXXXXXXXXXXXXXXXX" })) },
   xdr: {},
 }));
+
+const XDR = "AAAAfakexdrbase64encodedstring";
 
 describe("LinkoraClient write methods", () => {
   let client: LinkoraClient;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    client = new LinkoraClient({
-      contractId: "CDUMMYCONTRACTXXXXXXXXXXXXXXXXXXXXXXXXXXX",
-      rpcUrl: "https://dummy-rpc.example.com",
-    });
-
+    client = new LinkoraClient({ contractId: "CDUMMY", rpcUrl: "https://dummy.example.com" });
     mockAddOperation.mockReturnValue({ setTimeout: mockSetTimeout });
     mockSetTimeout.mockReturnValue({ build: mockBuild });
-    mockBuild.mockReturnValue({
-      toEnvelope: mockToEnvelope,
-    });
-    mockToEnvelope.mockReturnValue({
-      toXDR: mockToXDR,
-    });
-    mockToXDR.mockReturnValue("AAAAfakexdrbase64encodedstring");
+    mockBuild.mockReturnValue({ toEnvelope: mockToEnvelope });
+    mockToEnvelope.mockReturnValue({ toXDR: mockToXDR });
+    mockToXDR.mockReturnValue(XDR);
   });
 
-  describe("createPost", () => {
-    it("builds an XDR envelope for creating a post", () => {
-      const xdr = client.createPost("GAUTHOR", "Hello world");
+  const addr = (s: string) => expect.objectContaining({ _val: s });
+  const val = (v: unknown) => expect.objectContaining({ _val: v });
 
-      expect(mockCall).toHaveBeenCalledWith(
-        "create_post",
-        expect.objectContaining({ _val: "GAUTHOR" }),
-        expect.objectContaining({ _val: "Hello world" })
-      );
-      expect(xdr).toBe("AAAAfakexdrbase64encodedstring");
-    });
+  it("setProfile", () => {
+    expect(client.setProfile("GUSER", "alice", "GTOKEN")).toBe(XDR);
+    expect(mockCall).toHaveBeenCalledWith(
+      "set_profile",
+      addr("GUSER"),
+      val("alice"),
+      addr("GTOKEN")
+    );
   });
 
-  describe("deletePost", () => {
-    it("builds an XDR envelope for deleting a post", () => {
-      const xdr = client.deletePost("GAUTHOR", 42);
-
-      expect(mockCall).toHaveBeenCalledWith(
-        "delete_post",
-        expect.objectContaining({ _val: "GAUTHOR" }),
-        expect.objectContaining({ _val: 42 })
-      );
-      expect(xdr).toBe("AAAAfakexdrbase64encodedstring");
-    });
+  it("deleteProfile", () => {
+    expect(client.deleteProfile("GUSER")).toBe(XDR);
+    expect(mockCall).toHaveBeenCalledWith("delete_profile", addr("GUSER"));
   });
 
-  describe("follow", () => {
-    it("builds an XDR envelope for following a user", () => {
-      const xdr = client.follow("GFOLLOWER", "GTOFOLLOW");
-
-      expect(mockCall).toHaveBeenCalledWith(
-        "follow",
-        expect.objectContaining({ _val: "GFOLLOWER" }),
-        expect.objectContaining({ _val: "GTOFOLLOW" })
-      );
-      expect(xdr).toBe("AAAAfakexdrbase64encodedstring");
-    });
+  it("createPost", () => {
+    expect(client.createPost("GAUTHOR", "hello")).toBe(XDR);
+    expect(mockCall).toHaveBeenCalledWith("create_post", addr("GAUTHOR"), val("hello"));
   });
 
-  describe("unfollow", () => {
-    it("builds an XDR envelope for unfollowing a user", () => {
-      const xdr = client.unfollow("GFOLLOWER", "GTOUNFOLLOW");
-
-      expect(mockCall).toHaveBeenCalledWith(
-        "unfollow",
-        expect.objectContaining({ _val: "GFOLLOWER" }),
-        expect.objectContaining({ _val: "GTOUNFOLLOW" })
-      );
-      expect(xdr).toBe("AAAAfakexdrbase64encodedstring");
-    });
+  it("deletePost", () => {
+    expect(client.deletePost("GAUTHOR", 5)).toBe(XDR);
+    expect(mockCall).toHaveBeenCalledWith("delete_post", addr("GAUTHOR"), val(5));
   });
 
-  describe("like", () => {
-    it("builds an XDR envelope for liking a post", () => {
-      const xdr = client.like("GLIKER", 7);
-
-      expect(mockCall).toHaveBeenCalledWith(
-        "like",
-        expect.objectContaining({ _val: "GLIKER" }),
-        expect.objectContaining({ _val: 7 })
-      );
-      expect(xdr).toBe("AAAAfakexdrbase64encodedstring");
-    });
+  it("follow", () => {
+    expect(client.follow("GA", "GB")).toBe(XDR);
+    expect(mockCall).toHaveBeenCalledWith("follow", addr("GA"), addr("GB"));
   });
 
-  describe("unlike", () => {
-    it("builds an XDR envelope for unliking a post", () => {
-      const xdr = client.unlike("GLIKER", 7);
-
-      expect(mockCall).toHaveBeenCalledWith(
-        "unlike",
-        expect.objectContaining({ _val: "GLIKER" }),
-        expect.objectContaining({ _val: 7 })
-      );
-      expect(xdr).toBe("AAAAfakexdrbase64encodedstring");
-    });
+  it("unfollow", () => {
+    expect(client.unfollow("GA", "GB")).toBe(XDR);
+    expect(mockCall).toHaveBeenCalledWith("unfollow", addr("GA"), addr("GB"));
   });
 
-  describe("tip", () => {
-    it("builds an XDR envelope for tipping a post", () => {
-      const xdr = client.tip("GSENDER", 3, 500);
-
-      expect(mockCall).toHaveBeenCalledWith(
-        "tip",
-        expect.objectContaining({ _val: "GSENDER" }),
-        expect.objectContaining({ _val: 3 }),
-        expect.objectContaining({ _val: 500 })
-      );
-      expect(xdr).toBe("AAAAfakexdrbase64encodedstring");
-    });
-
-    it("accepts a bigint amount", () => {
-      const xdr = client.tip("GSENDER", 3, 1000n);
-
-      expect(mockCall).toHaveBeenCalledWith(
-        "tip",
-        expect.anything(),
-        expect.anything(),
-        expect.objectContaining({ _val: 1000n })
-      );
-      expect(xdr).toBe("AAAAfakexdrbase64encodedstring");
-    });
+  it("blockUser", () => {
+    expect(client.blockUser("GA", "GB")).toBe(XDR);
+    expect(mockCall).toHaveBeenCalledWith("block_user", addr("GA"), addr("GB"));
   });
 
-  describe("createPool", () => {
-    it("builds an XDR envelope for creating a pool", () => {
-      const xdr = client.createPool("GADMIN", "TOKEN", ["GA", "GB"], 2);
-
-      expect(mockCall).toHaveBeenCalledWith(
-        "create_pool",
-        expect.objectContaining({ _val: "GADMIN" }),
-        expect.objectContaining({ _val: "TOKEN" }),
-        expect.objectContaining({
-          _val: [expect.objectContaining({ _val: "GA" }), expect.objectContaining({ _val: "GB" })],
-        }),
-        expect.objectContaining({ _val: 2 })
-      );
-      expect(xdr).toBe("AAAAfakexdrbase64encodedstring");
-    });
+  it("unblockUser", () => {
+    expect(client.unblockUser("GA", "GB")).toBe(XDR);
+    expect(mockCall).toHaveBeenCalledWith("unblock_user", addr("GA"), addr("GB"));
   });
 
-  describe("deposit", () => {
-    it("builds an XDR envelope for depositing into a pool", () => {
-      const xdr = client.deposit("GDEPOSITOR", "pool-1", "TOKEN", 1000);
-
-      expect(mockCall).toHaveBeenCalledWith(
-        "deposit",
-        expect.objectContaining({ _val: "GDEPOSITOR" }),
-        expect.objectContaining({ _val: "pool-1" }),
-        expect.objectContaining({ _val: "TOKEN" }),
-        expect.objectContaining({ _val: 1000 })
-      );
-      expect(xdr).toBe("AAAAfakexdrbase64encodedstring");
-    });
+  it("likePost", () => {
+    expect(client.likePost("GUSER", 7)).toBe(XDR);
+    expect(mockCall).toHaveBeenCalledWith("like_post", addr("GUSER"), val(7));
   });
 
-  describe("withdraw", () => {
-    it("builds an XDR envelope for withdrawing from a pool", () => {
-      const xdr = client.withdraw(["GA", "GB"], "pool-1", 500, "GRECIPIENT");
-
-      expect(mockCall).toHaveBeenCalledWith(
-        "withdraw",
-        expect.objectContaining({
-          _val: [expect.objectContaining({ _val: "GA" }), expect.objectContaining({ _val: "GB" })],
-        }),
-        expect.objectContaining({ _val: "pool-1" }),
-        expect.objectContaining({ _val: 500 }),
-        expect.objectContaining({ _val: "GRECIPIENT" })
-      );
-      expect(xdr).toBe("AAAAfakexdrbase64encodedstring");
-    });
+  it("tip includes token argument", () => {
+    expect(client.tip("GSENDER", 3, "GTOKEN", 500)).toBe(XDR);
+    expect(mockCall).toHaveBeenCalledWith("tip", addr("GSENDER"), val(3), addr("GTOKEN"), val(500));
   });
 
-  describe("block", () => {
-    it("builds an XDR envelope for blocking a user", () => {
-      const xdr = client.block("GBLOCKER", "GBLOCKED");
-
-      expect(mockCall).toHaveBeenCalledWith(
-        "block",
-        expect.objectContaining({ _val: "GBLOCKER" }),
-        expect.objectContaining({ _val: "GBLOCKED" })
-      );
-      expect(xdr).toBe("AAAAfakexdrbase64encodedstring");
-    });
+  it("tip accepts bigint amount", () => {
+    expect(client.tip("GSENDER", 3, "GTOKEN", 1000n)).toBe(XDR);
+    expect(mockCall).toHaveBeenCalledWith(
+      "tip",
+      addr("GSENDER"),
+      val(3),
+      addr("GTOKEN"),
+      val(1000n)
+    );
   });
 
-  describe("unblock", () => {
-    it("builds an XDR envelope for unblocking a user", () => {
-      const xdr = client.unblock("GBLOCKER", "GBLOCKED");
+  it("createPool includes pool_id", () => {
+    expect(client.createPool("GADMIN", "pool1", "GTOKEN", ["GA", "GB"], 2)).toBe(XDR);
+    expect(mockCall).toHaveBeenCalledWith(
+      "create_pool",
+      addr("GADMIN"),
+      val("pool1"),
+      addr("GTOKEN"),
+      expect.anything(), // vec of addresses
+      val(2)
+    );
+  });
 
-      expect(mockCall).toHaveBeenCalledWith(
-        "unblock",
-        expect.objectContaining({ _val: "GBLOCKER" }),
-        expect.objectContaining({ _val: "GBLOCKED" })
-      );
-      expect(xdr).toBe("AAAAfakexdrbase64encodedstring");
-    });
+  it("poolDeposit", () => {
+    expect(client.poolDeposit("GDEPOSITOR", "pool1", "GTOKEN", 1000)).toBe(XDR);
+    expect(mockCall).toHaveBeenCalledWith(
+      "pool_deposit",
+      addr("GDEPOSITOR"),
+      val("pool1"),
+      addr("GTOKEN"),
+      val(1000)
+    );
+  });
+
+  it("poolWithdraw", () => {
+    expect(client.poolWithdraw(["GA", "GB"], "pool1", 500, "GRECIPIENT")).toBe(XDR);
+    expect(mockCall).toHaveBeenCalledWith(
+      "pool_withdraw",
+      expect.anything(), // vec of signers
+      val("pool1"),
+      val(500),
+      addr("GRECIPIENT")
+    );
+  });
+
+  it("addPoolAdmin", () => {
+    expect(client.addPoolAdmin(["GA"], "pool1", "GNEWADMIN")).toBe(XDR);
+    expect(mockCall).toHaveBeenCalledWith(
+      "add_pool_admin",
+      expect.anything(),
+      val("pool1"),
+      addr("GNEWADMIN")
+    );
+  });
+
+  it("removePoolAdmin", () => {
+    expect(client.removePoolAdmin(["GA"], "pool1", "GADMIN")).toBe(XDR);
+    expect(mockCall).toHaveBeenCalledWith(
+      "remove_pool_admin",
+      expect.anything(),
+      val("pool1"),
+      addr("GADMIN")
+    );
+  });
+
+  it("updatePoolThreshold", () => {
+    expect(client.updatePoolThreshold(["GA", "GB"], "pool1", 1)).toBe(XDR);
+    expect(mockCall).toHaveBeenCalledWith(
+      "update_pool_threshold",
+      expect.anything(),
+      val("pool1"),
+      val(1)
+    );
+  });
+
+  it("setFee", () => {
+    expect(client.setFee(250)).toBe(XDR);
+    expect(mockCall).toHaveBeenCalledWith("set_fee", val(250));
+  });
+
+  it("setTreasury", () => {
+    expect(client.setTreasury("GTREASURY")).toBe(XDR);
+    expect(mockCall).toHaveBeenCalledWith("set_treasury", addr("GTREASURY"));
+  });
+
+  it("setTipCooldownWindow", () => {
+    expect(client.setTipCooldownWindow(17280)).toBe(XDR);
+    expect(mockCall).toHaveBeenCalledWith("set_tip_cooldown_window", val(17280));
   });
 });

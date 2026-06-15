@@ -65,7 +65,7 @@ export function mapError(err: unknown): Error {
   if (/blocked/i.test(msg)) {
     return new UnauthorizedError("Operation rejected: user has blocked you.", err);
   }
-  if (/not found|does not exist/i.test(msg)) {
+  if (/not found|does not exist|MissingValue/i.test(msg)) {
     return new NotFoundError("The requested resource was not found.", err);
   }
   if (/cooldown/i.test(msg)) {

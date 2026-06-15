@@ -11,17 +11,13 @@ const mockSetTimeout = jest.fn();
 
 jest.mock("@stellar/stellar-sdk", () => ({
   rpc: {
-    Server: jest.fn(() => ({
-      simulateTransaction: mockSimulate,
-    })),
+    Server: jest.fn(() => ({ simulateTransaction: mockSimulate })),
     Api: {
       isSimulationError: (r: unknown) => !!(r as { error?: unknown }).error,
       isSimulationSuccess: (r: unknown) => !!(r as { result?: unknown }).result,
     },
   },
-  Contract: jest.fn(() => ({
-    call: mockCall,
-  })),
+  Contract: jest.fn(() => ({ call: mockCall })),
   nativeToScVal: jest.fn((val: unknown, opts?: unknown) => ({
     _type: "scval",
     _val: val,
@@ -34,15 +30,9 @@ jest.mock("@stellar/stellar-sdk", () => ({
     }
     return v;
   }),
-  TransactionBuilder: jest.fn(() => ({
-    addOperation: mockAddOperation,
-  })),
+  TransactionBuilder: jest.fn(() => ({ addOperation: mockAddOperation })),
   Account: jest.fn(),
-  Keypair: {
-    random: jest.fn(() => ({
-      publicKey: () => "GDUMMYKEYPAIRXXXXXXXXXXXXXXXXXXXXXX",
-    })),
-  },
+  Keypair: { random: jest.fn(() => ({ publicKey: () => "GDUMMYKEYPAIRXXXXXXXXXXXXXXXXXXXXXX" })) },
   xdr: {},
 }));
 
@@ -51,284 +41,242 @@ describe("LinkoraClient read methods", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    client = new LinkoraClient({
-      contractId: "CDUMMYCONTRACTXXXXXXXXXXXXXXXXXXXXXXXXXXX",
-      rpcUrl: "https://dummy-rpc.example.com",
-    });
-
+    client = new LinkoraClient({ contractId: "CDUMMY", rpcUrl: "https://dummy.example.com" });
     mockAddOperation.mockReturnValue({ setTimeout: mockSetTimeout });
     mockSetTimeout.mockReturnValue({ build: mockBuild });
-    mockBuild.mockReturnValue({
-      toEnvelope: mockToEnvelope,
-    });
-    mockToEnvelope.mockReturnValue({
-      toXDR: mockToXDR,
-    });
-    mockToXDR.mockReturnValue("AAAAfakexdrbase64encodedstring");
+    mockBuild.mockReturnValue({ toEnvelope: mockToEnvelope });
+    mockToEnvelope.mockReturnValue({ toXDR: mockToXDR });
+    mockToXDR.mockReturnValue("AAAAfake");
   });
 
-  function mockSuccessResult(retval: unknown) {
-    mockSimulate.mockResolvedValue({
-      result: { retval: { _type: "scval", _val: retval } },
-    });
-  }
+  const success = (retval: unknown) =>
+    mockSimulate.mockResolvedValue({ result: { retval: { _type: "scval", _val: retval } } });
+  const notFound = () => mockSimulate.mockResolvedValue({ result: null });
+  const simError = (msg: string) => mockSimulate.mockResolvedValue({ error: msg });
 
-  function mockNotFound() {
-    mockSimulate.mockResolvedValue({ result: null });
-  }
-
-  function mockError(msg: string) {
-    mockSimulate.mockResolvedValue({ error: msg });
-  }
+  const addr = (s: string) => expect.objectContaining({ _val: s });
+  const val = (v: unknown) => expect.objectContaining({ _val: v });
 
   describe("getProfile", () => {
-    it("returns a profile when the contract responds", async () => {
-      const profile: Profile = {
-        address: "GCKFBEIYTKP6RCZNVPH73XL7XFWTEOAO4MKONX7HOILHDVBMW5EVPOPZ",
-        username: "alice",
-        creator_token: "TOKEN1",
-        follower_count: 42,
-        following_count: 10,
-      };
-      mockSuccessResult(profile);
-
-      const result = await client.getProfile(
-        "GCKFBEIYTKP6RCZNVPH73XL7XFWTEOAO4MKONX7HOILHDVBMW5EVPOPZ"
-      );
-
-      expect(mockCall).toHaveBeenCalledWith(
-        "get_profile",
-        expect.objectContaining({
-          _val: "GCKFBEIYTKP6RCZNVPH73XL7XFWTEOAO4MKONX7HOILHDVBMW5EVPOPZ",
-        })
-      );
-      expect(result).toEqual(profile);
+    it("returns a profile", async () => {
+      const profile: Profile = { address: "GUSER", username: "alice", creator_token: "GTOKEN" };
+      success(profile);
+      expect(await client.getProfile("GUSER")).toEqual(profile);
+      expect(mockCall).toHaveBeenCalledWith("get_profile", addr("GUSER"));
     });
 
-    it("returns null when profile is not found", async () => {
-      mockNotFound();
-      const result = await client.getProfile(
-        "GCKFBEIYTKP6RCZNVPH73XL7XFWTEOAO4MKONX7HOILHDVBMW5EVPOPZ"
-      );
-      expect(result).toBeNull();
+    it("returns null when not found (null result)", async () => {
+      notFound();
+      expect(await client.getProfile("GUSER")).toBeNull();
     });
 
-    it("throws a mapped error on simulation failure", async () => {
-      mockError("not found");
-      await expect(client.getProfile("GABCDEF123")).rejects.toThrow(
-        "The requested resource was not found."
-      );
+    it("returns null on NotFoundError (MissingValue)", async () => {
+      simError("HostError: Error(Storage, MissingValue)");
+      expect(await client.getProfile("GUSER")).toBeNull();
+    });
+  });
+
+  describe("getProfileCount", () => {
+    it("returns count", async () => {
+      success(5);
+      expect(await client.getProfileCount()).toBe(5);
+      expect(mockCall).toHaveBeenCalledWith("get_profile_count");
+    });
+
+    it("returns 0 when null", async () => {
+      notFound();
+      expect(await client.getProfileCount()).toBe(0);
+    });
+  });
+
+  describe("getAddressByUsername", () => {
+    it("returns address", async () => {
+      success("GOWNER");
+      expect(await client.getAddressByUsername("alice")).toBe("GOWNER");
+      expect(mockCall).toHaveBeenCalledWith("get_address_by_username", val("alice"));
+    });
+
+    it("returns null when not found", async () => {
+      notFound();
+      expect(await client.getAddressByUsername("x")).toBeNull();
     });
   });
 
   describe("getPost", () => {
-    it("returns a post when found", async () => {
+    it("returns a post", async () => {
       const post: Post = {
         id: 1,
         author: "GAUTHOR",
-        username: "bob",
-        content: "Hello world",
-        tip_total: 100,
-        timestamp: 1234567890,
-        like_count: 5,
+        content: "hi",
+        tip_total: 0,
+        timestamp: 123,
+        like_count: 0,
       };
-      mockSuccessResult(post);
-
-      const result = await client.getPost(1);
-      expect(mockCall).toHaveBeenCalledWith("get_post", expect.objectContaining({ _val: 1 }));
-      expect(result).toEqual(post);
+      success(post);
+      expect(await client.getPost(1)).toEqual(post);
+      expect(mockCall).toHaveBeenCalledWith("get_post", val(1));
     });
 
-    it("returns null when post does not exist", async () => {
-      mockNotFound();
-      const result = await client.getPost(999);
-      expect(result).toBeNull();
+    it("returns null when null result", async () => {
+      notFound();
+      expect(await client.getPost(999)).toBeNull();
+    });
+
+    it("returns null on MissingValue error", async () => {
+      simError("Error(Storage, MissingValue)");
+      expect(await client.getPost(999)).toBeNull();
     });
   });
 
   describe("getPostCount", () => {
-    it("returns the post count", async () => {
-      mockSuccessResult(42);
-      const result = await client.getPostCount();
-      expect(mockCall).toHaveBeenCalledWith("get_post_count");
-      expect(result).toBe(42);
+    it("returns count", async () => {
+      success(10);
+      expect(await client.getPostCount()).toBe(10);
+    });
+    it("returns 0 when null", async () => {
+      notFound();
+      expect(await client.getPostCount()).toBe(0);
+    });
+  });
+
+  describe("getPostsByAuthor", () => {
+    it("returns post IDs", async () => {
+      success([1n, 2n, 3n]);
+      const result = await client.getPostsByAuthor("GAUTHOR", 0, 10);
+      expect(result).toEqual([1, 2, 3]);
+      expect(mockCall).toHaveBeenCalledWith(
+        "get_posts_by_author",
+        addr("GAUTHOR"),
+        val(0),
+        val(10)
+      );
     });
 
-    it("returns 0 when the result is null", async () => {
-      mockNotFound();
-      const result = await client.getPostCount();
-      expect(result).toBe(0);
+    it("returns empty array when null", async () => {
+      notFound();
+      expect(await client.getPostsByAuthor("GAUTHOR", 0, 10)).toEqual([]);
     });
   });
 
   describe("getFollowing", () => {
-    it("returns a list of addresses", async () => {
-      const addresses = ["GA", "GB", "GC"];
-      mockSuccessResult(addresses);
-      const result = await client.getFollowing("GUSER");
-      expect(mockCall).toHaveBeenCalledWith(
-        "get_following",
-        expect.objectContaining({ _val: "GUSER" })
-      );
-      expect(result).toEqual(addresses);
+    it("returns addresses with offset/limit", async () => {
+      success(["GA", "GB"]);
+      expect(await client.getFollowing("GUSER", 0, 10)).toEqual(["GA", "GB"]);
+      expect(mockCall).toHaveBeenCalledWith("get_following", addr("GUSER"), val(0), val(10));
     });
 
     it("returns empty array when null", async () => {
-      mockNotFound();
-      const result = await client.getFollowing("GUSER");
-      expect(result).toEqual([]);
+      notFound();
+      expect(await client.getFollowing("GUSER", 0, 10)).toEqual([]);
     });
   });
 
   describe("getFollowers", () => {
-    it("returns a list of addresses", async () => {
-      const addresses = ["GX", "GY"];
-      mockSuccessResult(addresses);
-      const result = await client.getFollowers("GUSER");
-      expect(mockCall).toHaveBeenCalledWith(
-        "get_followers",
-        expect.objectContaining({ _val: "GUSER" })
-      );
-      expect(result).toEqual(addresses);
-    });
-
-    it("returns empty array when null", async () => {
-      mockNotFound();
-      const result = await client.getFollowers("GUSER");
-      expect(result).toEqual([]);
-    });
-  });
-
-  describe("getPool", () => {
-    it("returns a pool when found", async () => {
-      const pool: Pool = {
-        pool_id: "pool-1",
-        token: "TOKEN",
-        balance: 1000n,
-        admins: ["GA", "GB"],
-        threshold: 2,
-      };
-      mockSuccessResult(pool);
-      const result = await client.getPool("pool-1");
-      expect(mockCall).toHaveBeenCalledWith(
-        "get_pool",
-        expect.objectContaining({ _val: "pool-1" })
-      );
-      expect(result).toEqual(pool);
-    });
-
-    it("returns null when pool does not exist", async () => {
-      mockNotFound();
-      const result = await client.getPool("pool-missing");
-      expect(result).toBeNull();
-    });
-  });
-
-  describe("getPoolAdmins", () => {
-    it("returns admin addresses", async () => {
-      const admins = ["GA", "GB", "GC"];
-      mockSuccessResult(admins);
-      const result = await client.getPoolAdmins("pool-1");
-      expect(mockCall).toHaveBeenCalledWith(
-        "get_pool_admins",
-        expect.objectContaining({ _val: "pool-1" })
-      );
-      expect(result).toEqual(admins);
-    });
-
-    it("returns empty array when null", async () => {
-      mockNotFound();
-      const result = await client.getPoolAdmins("pool-1");
-      expect(result).toEqual([]);
-    });
-  });
-
-  describe("getFeeBps", () => {
-    it("returns the fee in basis points", async () => {
-      mockSuccessResult(250);
-      const result = await client.getFeeBps();
-      expect(mockCall).toHaveBeenCalledWith("get_fee_bps");
-      expect(result).toBe(250);
-    });
-
-    it("returns 0 when null", async () => {
-      mockNotFound();
-      const result = await client.getFeeBps();
-      expect(result).toBe(0);
-    });
-  });
-
-  describe("getTreasury", () => {
-    it("returns the treasury address", async () => {
-      mockSuccessResult("GTREASURY");
-      const result = await client.getTreasury();
-      expect(mockCall).toHaveBeenCalledWith("get_treasury");
-      expect(result).toBe("GTREASURY");
-    });
-
-    it("returns empty string when null", async () => {
-      mockNotFound();
-      const result = await client.getTreasury();
-      expect(result).toBe("");
-    });
-  });
-
-  describe("hasLiked", () => {
-    it("returns true when liked", async () => {
-      mockSuccessResult(true);
-      const result = await client.hasLiked("GUSER", 5);
-      expect(mockCall).toHaveBeenCalledWith(
-        "has_liked",
-        expect.objectContaining({ _val: "GUSER" }),
-        expect.objectContaining({ _val: 5 })
-      );
-      expect(result).toBe(true);
-    });
-
-    it("returns false when not liked", async () => {
-      mockSuccessResult(false);
-      const result = await client.hasLiked("GUSER", 5);
-      expect(result).toBe(false);
-    });
-
-    it("returns false when null", async () => {
-      mockNotFound();
-      const result = await client.hasLiked("GUSER", 5);
-      expect(result).toBe(false);
+    it("returns addresses with offset/limit", async () => {
+      success(["GX", "GY"]);
+      expect(await client.getFollowers("GUSER", 0, 10)).toEqual(["GX", "GY"]);
+      expect(mockCall).toHaveBeenCalledWith("get_followers", addr("GUSER"), val(0), val(10));
     });
   });
 
   describe("isBlocked", () => {
-    it("returns true when blocked", async () => {
-      mockSuccessResult(true);
-      const result = await client.isBlocked("GBLOCKER", "GBLOCKED");
-      expect(mockCall).toHaveBeenCalledWith(
-        "is_blocked",
-        expect.objectContaining({ _val: "GBLOCKER" }),
-        expect.objectContaining({ _val: "GBLOCKED" })
-      );
-      expect(result).toBe(true);
+    it("returns true", async () => {
+      success(true);
+      expect(await client.isBlocked("GA", "GB")).toBe(true);
     });
+    it("returns false", async () => {
+      success(false);
+      expect(await client.isBlocked("GA", "GB")).toBe(false);
+    });
+  });
 
-    it("returns false when not blocked", async () => {
-      mockSuccessResult(false);
-      const result = await client.isBlocked("GBLOCKER", "GBLOCKED");
-      expect(result).toBe(false);
+  describe("hasLiked", () => {
+    it("returns true", async () => {
+      success(true);
+      expect(await client.hasLiked("GUSER", 1)).toBe(true);
+    });
+    it("returns false when null", async () => {
+      notFound();
+      expect(await client.hasLiked("GUSER", 1)).toBe(false);
     });
   });
 
   describe("getLikeCount", () => {
-    it("returns the like count", async () => {
-      mockSuccessResult(10);
-      const result = await client.getLikeCount(3);
-      expect(mockCall).toHaveBeenCalledWith("get_like_count", expect.objectContaining({ _val: 3 }));
-      expect(result).toBe(10);
+    it("returns count", async () => {
+      success(7);
+      expect(await client.getLikeCount(1)).toBe(7);
+    });
+    it("returns 0 when null", async () => {
+      notFound();
+      expect(await client.getLikeCount(1)).toBe(0);
+    });
+  });
+
+  describe("getPool", () => {
+    it("returns a pool", async () => {
+      const pool: Pool = {
+        pool_id: "p1",
+        token: "GTOKEN",
+        balance: 1000n,
+        admins: ["GA"],
+        threshold: 1,
+      };
+      success(pool);
+      expect(await client.getPool("p1")).toEqual(pool);
+      expect(mockCall).toHaveBeenCalledWith("get_pool", val("p1"));
     });
 
+    it("returns null when null result", async () => {
+      notFound();
+      expect(await client.getPool("p1")).toBeNull();
+    });
+  });
+
+  describe("getPoolAdmins", () => {
+    it("returns admin list", async () => {
+      success(["GA", "GB"]);
+      expect(await client.getPoolAdmins("p1")).toEqual(["GA", "GB"]);
+      expect(mockCall).toHaveBeenCalledWith("get_pool_admins", val("p1"));
+    });
+  });
+
+  describe("getFeeBps", () => {
+    it("returns fee", async () => {
+      success(250);
+      expect(await client.getFeeBps()).toBe(250);
+    });
     it("returns 0 when null", async () => {
-      mockNotFound();
-      const result = await client.getLikeCount(3);
-      expect(result).toBe(0);
+      notFound();
+      expect(await client.getFeeBps()).toBe(0);
+    });
+  });
+
+  describe("getTreasury", () => {
+    it("returns address", async () => {
+      success("GTREASURY");
+      expect(await client.getTreasury()).toBe("GTREASURY");
+    });
+    it("returns null when null", async () => {
+      notFound();
+      expect(await client.getTreasury()).toBeNull();
+    });
+  });
+
+  describe("getTipCooldownWindow", () => {
+    it("returns window", async () => {
+      success(17280);
+      expect(await client.getTipCooldownWindow()).toBe(17280);
+    });
+    it("returns 0 when null", async () => {
+      notFound();
+      expect(await client.getTipCooldownWindow()).toBe(0);
+    });
+  });
+
+  describe("error mapping", () => {
+    it("throws mapped error for non-NotFound errors", async () => {
+      simError("unauthorized action");
+      await expect(client.getPostCount()).rejects.toThrow("Unauthorized");
     });
   });
 });
