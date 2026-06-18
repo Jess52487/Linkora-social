@@ -201,3 +201,4 @@ The `migrate_follow_graph(env, users: Vec<Address>)` admin function:
 - All existing tests continue to pass because the public API signatures
   (`follow`, `unfollow`, `get_following`, `get_followers`) are unchanged.
 - New stress tests validate O(1) instruction costs at 500 followers.
+

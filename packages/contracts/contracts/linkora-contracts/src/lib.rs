@@ -522,24 +522,23 @@ impl LinkoraContract {
                 .persistent()
                 .get(&StorageKey::FollowingCount(follower.clone()))
                 .unwrap_or(0u32);
-            let following_idx_key =
-                StorageKey::FollowingIdx(follower.clone(), following_count);
+            let following_idx_key = StorageKey::FollowingIdx(follower.clone(), following_count);
             env.storage()
                 .persistent()
                 .set(&following_idx_key, &followee);
             Self::bump(&env, &following_idx_key);
 
             // Store position for O(1) swap-remove
-            let following_pos_key =
-                StorageKey::FollowingPos(follower.clone(), followee.clone());
+            let following_pos_key = StorageKey::FollowingPos(follower.clone(), followee.clone());
             env.storage()
                 .persistent()
                 .set(&following_pos_key, &following_count);
             Self::bump(&env, &following_pos_key);
 
-            env.storage()
-                .persistent()
-                .set(&StorageKey::FollowingCount(follower.clone()), &(following_count + 1));
+            env.storage().persistent().set(
+                &StorageKey::FollowingCount(follower.clone()),
+                &(following_count + 1),
+            );
             Self::bump(&env, &StorageKey::FollowingCount(follower.clone()));
 
             // 3. Append to followee's followers-index
@@ -548,24 +547,23 @@ impl LinkoraContract {
                 .persistent()
                 .get(&StorageKey::FollowersCount(followee.clone()))
                 .unwrap_or(0u32);
-            let followers_idx_key =
-                StorageKey::FollowersIdx(followee.clone(), followers_count);
+            let followers_idx_key = StorageKey::FollowersIdx(followee.clone(), followers_count);
             env.storage()
                 .persistent()
                 .set(&followers_idx_key, &follower);
             Self::bump(&env, &followers_idx_key);
 
             // Store position for O(1) swap-remove
-            let followers_pos_key =
-                StorageKey::FollowersPos(followee.clone(), follower.clone());
+            let followers_pos_key = StorageKey::FollowersPos(followee.clone(), follower.clone());
             env.storage()
                 .persistent()
                 .set(&followers_pos_key, &followers_count);
             Self::bump(&env, &followers_pos_key);
 
-            env.storage()
-                .persistent()
-                .set(&StorageKey::FollowersCount(followee.clone()), &(followers_count + 1));
+            env.storage().persistent().set(
+                &StorageKey::FollowersCount(followee.clone()),
+                &(followers_count + 1),
+            );
             Self::bump(&env, &StorageKey::FollowersCount(followee.clone()));
         }
 
@@ -584,18 +582,12 @@ impl LinkoraContract {
 
             // 2. Swap-remove from follower's following-index
             Self::swap_remove_from_index(
-                &env,
-                &follower,
-                &followee,
-                true, // is_following side
+                &env, &follower, &followee, true, // is_following side
             );
 
             // 3. Swap-remove from followee's followers-index
             Self::swap_remove_from_index(
-                &env,
-                &followee,
-                &follower,
-                false, // is_followers side
+                &env, &followee, &follower, false, // is_followers side
             );
         }
 
@@ -625,10 +617,7 @@ impl LinkoraContract {
         Self::bump_instance(&env);
         Self::require_admin(&env);
 
-        assert!(
-            users.len() <= 50,
-            "batch size must not exceed 50 users"
-        );
+        assert!(users.len() <= 50, "batch size must not exceed 50 users");
 
         for user in users.iter() {
             let migrated_key = StorageKey::GraphMigrated(user.clone());
@@ -679,9 +668,10 @@ impl LinkoraContract {
                         let f_pos_key = StorageKey::FollowersPos(followee.clone(), user.clone());
                         env.storage().persistent().set(&f_pos_key, &f_count);
                         Self::bump(&env, &f_pos_key);
-                        env.storage()
-                            .persistent()
-                            .set(&StorageKey::FollowersCount(followee.clone()), &(f_count + 1));
+                        env.storage().persistent().set(
+                            &StorageKey::FollowersCount(followee.clone()),
+                            &(f_count + 1),
+                        );
                         Self::bump(&env, &StorageKey::FollowersCount(followee.clone()));
                     }
                 }
@@ -689,10 +679,56 @@ impl LinkoraContract {
                 env.storage().persistent().remove(&following_key);
             }
 
-            // Remove old followers list (edges were already written from the
-            // following side; the followers Vec is now redundant)
+            // Migrate followers list (in case of asymmetric old data)
             let followers_key = StorageKey::Followers(user.clone());
-            if env.storage().persistent().has(&followers_key) {
+            if let Some(followers_list) = env
+                .storage()
+                .persistent()
+                .get::<_, Vec<Address>>(&followers_key)
+            {
+                for follower in followers_list.iter() {
+                    let edge_key = StorageKey::Edge(follower.clone(), user.clone());
+                    if !env.storage().persistent().has(&edge_key) {
+                        // Write edge
+                        env.storage().persistent().set(&edge_key, &true);
+                        Self::bump(&env, &edge_key);
+
+                        // Append to follower's following index
+                        let count: u32 = env
+                            .storage()
+                            .persistent()
+                            .get(&StorageKey::FollowingCount(follower.clone()))
+                            .unwrap_or(0u32);
+                        let idx_key = StorageKey::FollowingIdx(follower.clone(), count);
+                        env.storage().persistent().set(&idx_key, &user);
+                        Self::bump(&env, &idx_key);
+                        let pos_key = StorageKey::FollowingPos(follower.clone(), user.clone());
+                        env.storage().persistent().set(&pos_key, &count);
+                        Self::bump(&env, &pos_key);
+                        env.storage()
+                            .persistent()
+                            .set(&StorageKey::FollowingCount(follower.clone()), &(count + 1));
+                        Self::bump(&env, &StorageKey::FollowingCount(follower.clone()));
+
+                        // Append to user's followers index
+                        let f_count: u32 = env
+                            .storage()
+                            .persistent()
+                            .get(&StorageKey::FollowersCount(user.clone()))
+                            .unwrap_or(0u32);
+                        let f_idx_key = StorageKey::FollowersIdx(user.clone(), f_count);
+                        env.storage().persistent().set(&f_idx_key, &follower);
+                        Self::bump(&env, &f_idx_key);
+                        let f_pos_key = StorageKey::FollowersPos(user.clone(), follower.clone());
+                        env.storage().persistent().set(&f_pos_key, &f_count);
+                        Self::bump(&env, &f_pos_key);
+                        env.storage()
+                            .persistent()
+                            .set(&StorageKey::FollowersCount(user.clone()), &(f_count + 1));
+                        Self::bump(&env, &StorageKey::FollowersCount(user.clone()));
+                    }
+                }
+                // Remove old followers list
                 env.storage().persistent().remove(&followers_key);
             }
 
@@ -1304,12 +1340,7 @@ impl LinkoraContract {
     /// `target`: the address to remove from the index
     /// `is_following`: true = FollowingIdx/FollowingPos/FollowingCount,
     ///                 false = FollowersIdx/FollowersPos/FollowersCount
-    fn swap_remove_from_index(
-        env: &Env,
-        owner: &Address,
-        target: &Address,
-        is_following: bool,
-    ) {
+    fn swap_remove_from_index(env: &Env, owner: &Address, target: &Address, is_following: bool) {
         let pos_key = if is_following {
             StorageKey::FollowingPos(owner.clone(), target.clone())
         } else {
@@ -1325,12 +1356,8 @@ impl LinkoraContract {
             .storage()
             .persistent()
             .get(&pos_key)
-            .unwrap_or(0u32);
-        let count: u32 = env
-            .storage()
-            .persistent()
-            .get(&count_key)
-            .unwrap_or(0u32);
+            .expect("position entry missing for swap-remove");
+        let count: u32 = env.storage().persistent().get(&count_key).unwrap_or(0u32);
 
         if count == 0 {
             return;
@@ -1357,9 +1384,7 @@ impl LinkoraContract {
             } else {
                 StorageKey::FollowersIdx(owner.clone(), pos)
             };
-            env.storage()
-                .persistent()
-                .set(&target_idx_key, &last_addr);
+            env.storage().persistent().set(&target_idx_key, &last_addr);
             Self::bump(env, &target_idx_key);
 
             // Update the moved entry's position record
