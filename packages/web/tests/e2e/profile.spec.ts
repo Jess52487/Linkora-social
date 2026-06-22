@@ -9,8 +9,7 @@ test.describe('Profile Flow', () => {
   test('profile page renders for a valid address', async ({ page }) => {
     await page.goto(`/profile/${MOCK_ADDRESS}`);
     await page.waitForLoadState('networkidle');
-    // Page shows either a profile or "not found" — either way the page loads
-    const content = page.locator('main, [data-testid="profile"], h1, h2').first();
+    const content = page.locator('main, h1, h2').first();
     await expect(content).toBeVisible({ timeout: 10000 });
   });
 
@@ -19,8 +18,8 @@ test.describe('Profile Flow', () => {
     await connectWallet(page);
     await page.goto(`/profile/${MOCK_ADDRESS}`);
     await page.waitForLoadState('networkidle');
-    // Edit profile link or own profile indicator
-    const editOrProfile = page.locator('a[href*="edit"], text=/edit profile/i, h1, h2').first();
-    await expect(editOrProfile).toBeVisible({ timeout: 10000 });
+    // Look for edit link or any heading — page must render without error
+    const heading = page.locator('h1, h2').first();
+    await expect(heading).toBeVisible({ timeout: 10000 });
   });
 });

@@ -2,10 +2,6 @@ import { Page, expect } from '@playwright/test';
 
 const MOCK_ADDRESS = 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN';
 
-/**
- * Inject a mock window.freighterApi so connect() succeeds without the extension.
- * Must be called before page.goto() to run before page scripts.
- */
 export async function injectWalletMock(page: Page): Promise<void> {
   await page.addInitScript((address) => {
     (window as Window & { freighterApi?: unknown }).freighterApi = {
@@ -16,29 +12,36 @@ export async function injectWalletMock(page: Page): Promise<void> {
   }, MOCK_ADDRESS);
 }
 
-/**
- * Wait for wallet to be connected and return the connected address.
- */
 export async function waitForWalletConnection(page: Page, timeout = 15000): Promise<string> {
   await page.locator('[data-testid="disconnect-wallet"]').waitFor({ timeout });
-  const addressEl = page.locator('[data-testid="wallet-address"]').first();
-  return (await addressEl.textContent()) ?? '';
+  return (await page.locator('[data-testid="wallet-address"]').first().textContent()) ?? '';
 }
 
-/**
- * Connect wallet, handling the mobile hamburger menu if present.
- */
 export async function connectWallet(page: Page): Promise<void> {
   await page.waitForLoadState('networkidle');
 
-  // On mobile the Connect Wallet button lives inside the hamburger drawer.
+  // On mobile viewports the desktop nav is hidden via CSS and the connect
+  // button lives inside the hamburger drawer. Click the hamburger first.
+  // We try clicking it regardless of isVisible() since CSS media queries
+  // can make the element technically present but not yet reported visible.
   const hamburger = page.locator('[aria-label="Toggle navigation menu"]').first();
-  if (await hamburger.isVisible().catch(() => false)) {
-    await hamburger.click();
-    await page.waitForTimeout(500);
+
+  // If the desktop connect button is already visible, skip the hamburger.
+  const desktopBtn = page.locator('[data-testid="connect-wallet"]').first();
+  const desktopVisible = await desktopBtn.isVisible().catch(() => false);
+
+  if (!desktopVisible) {
+    // Mobile: open the drawer
+    try {
+      await hamburger.click({ timeout: 5000 });
+    } catch {
+      // hamburger not found or not clickable — desktop layout, proceed anyway
+    }
+    // Wait for the drawer's connect button to appear
+    await page.locator('[data-testid="connect-wallet"]').first().waitFor({ state: 'visible', timeout: 8000 });
   }
 
-  // Use data-testid (stable). Both desktop+mobile buttons have it; .first() avoids strict-mode error.
+  // Now click whichever connect button is visible
   const connectBtn = page.locator('[data-testid="connect-wallet"]').first();
   await expect(connectBtn).toBeVisible({ timeout: 10000 });
   await connectBtn.click();
