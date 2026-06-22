@@ -20,29 +20,67 @@ export async function waitForWalletConnection(page: Page, timeout = 15000): Prom
 export async function connectWallet(page: Page): Promise<void> {
   await page.waitForLoadState('networkidle');
 
-  // On mobile viewports the desktop nav is hidden via CSS and the connect
-  // button lives inside the hamburger drawer. Click the hamburger first.
-  // We try clicking it regardless of isVisible() since CSS media queries
-  // can make the element technically present but not yet reported visible.
-  const hamburger = page.locator('[aria-label="Toggle navigation menu"]').first();
+  // Try opening a mobile hamburger drawer using multiple selector fallbacks.
+  const hamburgerSelectors = [
+    '[aria-label="Toggle navigation menu"]',
+    '[aria-label*="Toggle"]',
+    '[aria-label*="toggle"]',
+    'button[aria-label*="menu"]',
+    'button[aria-label*="navigation"]',
+  ];
 
-  // If the desktop connect button is already visible, skip the hamburger.
-  const desktopBtn = page.locator('[data-testid="connect-wallet"]').first();
-  const desktopVisible = await desktopBtn.isVisible().catch(() => false);
-
-  if (!desktopVisible) {
-    // Mobile: open the drawer
+  for (const sel of hamburgerSelectors) {
     try {
-      await hamburger.click({ timeout: 5000 });
+      const h = page.locator(sel).first();
+      if (await h.isVisible().catch(() => false)) {
+        await h.click();
+        await page.waitForTimeout(600);
+        break;
+      }
     } catch {
-      // hamburger not found or not clickable — desktop layout, proceed anyway
+      // try next selector
     }
-    // Wait for the drawer's connect button to appear
-    await page.locator('[data-testid="connect-wallet"]').first().waitFor({ state: 'visible', timeout: 8000 });
   }
 
-  // Now click whichever connect button is visible
-  const connectBtn = page.locator('[data-testid="connect-wallet"]').first();
+  // Robust set of selectors for the Connect Wallet button.
+  const connectSelectors = [
+    '[data-testid="connect-wallet"]',
+    '[data-testid*="connect"]',
+    'button:has-text("Connect Wallet")',
+    'button:has-text("Connect")',
+  ];
+
+  let connectBtn: ReturnType<Page['locator']> | null = null;
+
+  // Fast path: already visible
+  for (const sel of connectSelectors) {
+    const loc = page.locator(sel).first();
+    if (await loc.isVisible().catch(() => false)) {
+      connectBtn = loc;
+      break;
+    }
+  }
+
+  // Fallback: wait for it to appear (drawer may still be animating)
+  if (!connectBtn) {
+    for (const sel of connectSelectors) {
+      try {
+        const loc = page.locator(sel).first();
+        await loc.waitFor({ state: 'visible', timeout: 8000 });
+        connectBtn = loc;
+        break;
+      } catch {
+        // try next
+      }
+    }
+  }
+
+  if (!connectBtn) {
+    throw new Error(
+      `Connect wallet button not found. Tried: ${connectSelectors.join(', ')}`
+    );
+  }
+
   await expect(connectBtn).toBeVisible({ timeout: 10000 });
   await connectBtn.click();
 
