@@ -8,22 +8,26 @@ function truncateAddress(addr: string): string {
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
 }
 
-function NotificationRow({ notification }: { notification: Notification }) {
+function buildMessage(notification: Notification): string {
   const actor = truncateAddress(notification.actor);
-  const ts = new Date(notification.timestamp).toLocaleString();
+  const { type, postId, amountXlm, excerpt } = notification;
+  const postRef = excerpt ? `"${excerpt}"` : postId !== undefined ? `post #${postId}` : "a post";
 
-  let message: string;
-  switch (notification.type) {
+  switch (type) {
     case "follow":
-      message = `@${actor} started following you`;
-      break;
+      return `@${actor} started following you`;
     case "like":
-      message = `@${actor} liked your post${notification.postId !== undefined ? ` #${notification.postId}` : ""}`;
-      break;
+      return `@${actor} liked your post — ${postRef}`;
     case "tip":
-      message = `@${actor} tipped ${notification.amountXlm ?? "?"} XLM on post${notification.postId !== undefined ? ` #${notification.postId}` : ""}`;
-      break;
+      return `@${actor} tipped ${amountXlm ?? "?"} XLM on ${postRef}`;
   }
+}
+
+function NotificationRow({ notification }: { notification: Notification }) {
+  const ts = new Date(notification.timestamp).toLocaleTimeString(undefined, {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
   return (
     <li
@@ -36,13 +40,13 @@ function NotificationRow({ notification }: { notification: Notification }) {
       data-type={notification.type}
     >
       <span
-        className={`mt-0.5 flex h-2.5 w-2.5 flex-shrink-0 rounded-full ${
+        className={`mt-1 flex h-2.5 w-2.5 flex-shrink-0 rounded-full ${
           notification.read ? "bg-transparent" : "bg-violet-500"
         }`}
         aria-hidden="true"
       />
       <div className="flex-1 min-w-0">
-        <p className="text-sm text-[var(--foreground)]">{message}</p>
+        <p className="text-sm text-[var(--foreground)]">{buildMessage(notification)}</p>
         <time className="text-xs text-[var(--text-muted)]" dateTime={notification.timestamp}>
           {ts}
         </time>
@@ -51,11 +55,42 @@ function NotificationRow({ notification }: { notification: Notification }) {
   );
 }
 
+interface DateGroup {
+  label: string;
+  items: Notification[];
+}
+
+function groupByDate(notifications: Notification[]): DateGroup[] {
+  const groups = new Map<string, Notification[]>();
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const yesterdayStart = todayStart - 86_400_000;
+
+  for (const n of notifications) {
+    const t = new Date(n.timestamp).getTime();
+    let label: string;
+    if (t >= todayStart) {
+      label = "Today";
+    } else if (t >= yesterdayStart) {
+      label = "Yesterday";
+    } else {
+      label = new Date(n.timestamp).toLocaleDateString(undefined, {
+        weekday: "long",
+        month: "short",
+        day: "numeric",
+      });
+    }
+    if (!groups.has(label)) groups.set(label, []);
+    groups.get(label)!.push(n);
+  }
+
+  return Array.from(groups.entries()).map(([label, items]) => ({ label, items }));
+}
+
 export default function NotificationsPage() {
   const { address, connected } = useWalletContext();
   const { notifications, hasMore, unreadCount, markAllRead, loadMore } = useNotifications();
 
-  // Reset unread badge on visit
   useEffect(() => {
     if (connected && unreadCount > 0) {
       markAllRead();
@@ -69,6 +104,8 @@ export default function NotificationsPage() {
       </div>
     );
   }
+
+  const groups = groupByDate(notifications);
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
@@ -96,11 +133,20 @@ export default function NotificationsPage() {
         </div>
       ) : (
         <>
-          <ul className="flex flex-col gap-3" data-testid="notifications-list">
-            {notifications.map((n) => (
-              <NotificationRow key={n.id} notification={n} />
+          <div className="flex flex-col gap-6" data-testid="notifications-list">
+            {groups.map(({ label, items }) => (
+              <section key={label}>
+                <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
+                  {label}
+                </h2>
+                <ul className="flex flex-col gap-3">
+                  {items.map((n) => (
+                    <NotificationRow key={n.id} notification={n} />
+                  ))}
+                </ul>
+              </section>
             ))}
-          </ul>
+          </div>
 
           {hasMore && (
             <div className="mt-6 flex justify-center">

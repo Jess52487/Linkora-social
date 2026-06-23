@@ -19,14 +19,17 @@ export interface Notification {
   actor: string;
   postId?: number;
   amountXlm?: string;
+  excerpt?: string;
   timestamp: string;
   read: boolean;
 }
 
 const LS_NOTIFICATIONS_KEY = "linkora:notifications:items";
 const PAGE_SIZE = 10;
+const EXCERPT_LEN = 60;
 const RPC_URL = process.env.NEXT_PUBLIC_SOROBAN_RPC_URL ?? "https://soroban-testnet.stellar.org";
 const CONTRACT_ID = process.env.NEXT_PUBLIC_CONTRACT_ID ?? "";
+const INDEXER_URL = process.env.NEXT_PUBLIC_INDEXER_URL ?? "http://localhost:3001";
 
 function loadStored(address: string): Notification[] {
   try {
@@ -44,6 +47,19 @@ function persist(address: string, items: Notification[]): void {
 
 function stroopsToXlm(amount: bigint): string {
   return (Number(amount) / 1e7).toFixed(2);
+}
+
+async function fetchPostExcerpt(postId: number): Promise<string | undefined> {
+  try {
+    const res = await fetch(`${INDEXER_URL}/api/posts/${postId}`);
+    if (!res.ok) return undefined;
+    const post = (await res.json()) as { content?: string };
+    if (!post.content) return undefined;
+    const text = post.content.trim();
+    return text.length > EXCERPT_LEN ? `${text.slice(0, EXCERPT_LEN)}…` : text;
+  } catch {
+    return undefined;
+  }
 }
 
 export function useNotifications() {
@@ -105,23 +121,27 @@ export function useNotifications() {
           read: false,
         });
       },
-      like(event: LikeEvent) {
+      async like(event: LikeEvent) {
+        const excerpt = await fetchPostExcerpt(event.post_id);
         addNotification({
           id: event.meta.id ?? `like-${event.user}-${event.post_id}-${Date.now()}`,
           type: "like",
           actor: event.user,
           postId: event.post_id,
+          excerpt,
           timestamp: event.meta.ledgerClosedAt ?? new Date().toISOString(),
           read: false,
         });
       },
-      tip(event: TipEvent) {
+      async tip(event: TipEvent) {
+        const excerpt = await fetchPostExcerpt(event.post_id);
         addNotification({
           id: event.meta.id ?? `tip-${event.tipper}-${event.post_id}-${Date.now()}`,
           type: "tip",
           actor: event.tipper,
           postId: event.post_id,
           amountXlm: stroopsToXlm(event.amount),
+          excerpt,
           timestamp: event.meta.ledgerClosedAt ?? new Date().toISOString(),
           read: false,
         });

@@ -7,6 +7,23 @@ export * from "./mini-apps/validateManifest";
 export * as dm from "./dm";
 export { LinkoraEventSubscriber } from "./events/subscriber";
 export type { LinkoraEventHandlers, LinkoraEventSubscriberConfig } from "./events/subscriber";
+export type {
+  LinkoraEvent,
+  LinkoraEventMeta,
+  FollowEvent,
+  UnfollowEvent,
+  LikeEvent,
+  TipEvent,
+  PostCreatedEvent,
+  PostDeletedEvent,
+  PoolDepositEvent,
+  PoolWithdrawEvent,
+  GovProposalCreatedEvent,
+  GovVoteEvent,
+  GovProposalExecutedEvent,
+  DmKeyPublishedEvent,
+  EmergencyBypassEvent,
+} from "./events/types";
 export {
   LocalStorageCursorStore,
   MemoryCursorStore,
