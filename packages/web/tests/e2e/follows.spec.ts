@@ -7,7 +7,7 @@ test.describe('Follows Flow', () => {
   test.beforeEach(async ({ page }) => {
     // Navigate to profile first
     await page.goto(`/profile/${targetAddress}`);
-    
+
     // Inject mock wallet public key into localStorage so inline follow/unfollow is permitted
     await page.evaluate((key) => {
       localStorage.setItem('linkora_wallet_public_key', key);
@@ -17,28 +17,33 @@ test.describe('Follows Flow', () => {
   test('Navigate to followers list, search/filter users, and navigate back', async ({ page }) => {
     // 1. Visit the profile page
     await page.goto(`/profile/${targetAddress}`);
-    // wait for key element to load
-    await page.waitForSelector('a[href*="/followers"]');
 
     // 2. Click the Followers link in the profile header
-    const followersLink = page.locator('a[href*="/followers"]').first();
+    const followersLink = page
+      .locator(`a[href="/profile/${targetAddress}/followers"]`)
+      .filter({ hasText: /followers/i })
+      .first();
     await expect(followersLink).toBeVisible();
-    await followersLink.click();
+    await Promise.all([
+      page.waitForURL(new RegExp(`/profile/${targetAddress}/followers`)),
+      followersLink.click(),
+    ]);
 
     // 3. Verify URL and list title
-    await expect(page).toHaveURL(new RegExp(`/profile/${targetAddress}/followers`));
     await expect(page.locator('h1')).toHaveText('Followers');
 
-    // 4. Verify search/filter functionality
+    // 4. Verify search/filter functionality using an actual rendered username
     const searchInput = page.getByPlaceholder('Filter by username...');
     await expect(searchInput).toBeVisible();
-    
-    // Type a username that should exist in mock/test data (e.g., 'stellar_dev')
-    await searchInput.fill('stellar_dev');
-    
-    // Check that at least one item containing 'stellar_dev' is visible
-    const filteredUser = page.locator('text=/stellar_dev/i').first();
-    await expect(filteredUser).toBeVisible();
+
+    const firstUserLink = page.locator('ul[role="list"] li a[href^="/profile/"]').first();
+    await expect(firstUserLink).toBeVisible();
+    const firstUsername = (await firstUserLink.textContent())?.replace(/^@/, '').trim() || '';
+    expect(firstUsername).toBeTruthy();
+
+    const filterTerm = firstUsername.slice(0, Math.min(6, firstUsername.length));
+    await searchInput.fill(filterTerm);
+    await expect(firstUserLink).toContainText(firstUsername);
 
     // Type a non-existent username
     await searchInput.fill('nonexistent_user_xyz');
@@ -47,8 +52,10 @@ test.describe('Follows Flow', () => {
     // 5. Navigate back to the profile page using the back link
     const backLink = page.locator('a:has-text("Back to Profile")');
     await expect(backLink).toBeVisible();
-    await backLink.click();
-    await expect(page).toHaveURL(new RegExp(`/profile/${targetAddress}$`));
+    await Promise.all([
+      page.waitForURL(new RegExp(`/profile/${targetAddress}$`)),
+      backLink.click(),
+    ]);
   });
 
   test('Navigate to following list and verify inline follow/unfollow optimistic updates', async ({ page }) => {
@@ -70,7 +77,7 @@ test.describe('Follows Flow', () => {
 
     // 4. Click follow button and verify optimistic UI update
     await followButton.click();
-    
+
     if (isInitiallyFollowing) {
       // Should instantly change to Follow
       await expect(followButton).toHaveText(/Follow/i);
@@ -87,7 +94,7 @@ test.describe('Follows Flow', () => {
 
     // 2. Focus on search input using tab
     await page.focus('input[placeholder="Filter by username..."]');
-    
+
     // 3. Check ARIA attributes
     const list = page.locator('ul[role="list"]').first();
     await expect(list).toHaveAttribute('aria-label', 'Following list');
