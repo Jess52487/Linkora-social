@@ -3251,7 +3251,7 @@ fn test_moderation_happy_path_uphold() {
     let pool_admin2 = Address::generate(&env);
     let pool_admins = vec![&env, pool_admin1.clone(), pool_admin2.clone()];
     let token = setup_token(&env, &pool_admin1);
-    
+
     // We register the mods pool
     client.create_pool(&admin, &symbol_short!("mods"), &token, &pool_admins, &2);
 
@@ -3303,7 +3303,10 @@ fn test_moderation_happy_path_uphold() {
     assert_eq!(TokenClient::new(&env, &token).balance(&reporter), 1000);
 
     // Author should be slashed (10000 - 50% = 5000)
-    assert_eq!(TokenClient::new(&env, &creator_token).balance(&author), 5000);
+    assert_eq!(
+        TokenClient::new(&env, &creator_token).balance(&author),
+        5000
+    );
 
     // Report status should be Upheld
     let report_after = client.get_report(&post_id, &reporter).unwrap();
@@ -3320,7 +3323,7 @@ fn test_moderation_dismiss() {
     let pool_admin1 = Address::generate(&env);
     let pool_admins = vec![&env, pool_admin1.clone()];
     let token = setup_token(&env, &pool_admin1);
-    
+
     client.create_pool(&admin, &symbol_short!("mods"), &token, &pool_admins, &1);
 
     let author = Address::generate(&env);
@@ -3376,7 +3379,7 @@ fn test_moderation_unauthorized_review_panics() {
     let pool_admin2 = Address::generate(&env);
     let pool_admins = vec![&env, pool_admin1.clone(), pool_admin2.clone()];
     let token = setup_token(&env, &pool_admin1);
-    
+
     client.create_pool(&admin, &symbol_short!("mods"), &token, &pool_admins, &2);
 
     let author = Address::generate(&env);
@@ -3418,7 +3421,7 @@ fn test_moderation_review_already_deleted_post() {
     let pool_admin1 = Address::generate(&env);
     let pool_admins = vec![&env, pool_admin1.clone()];
     let token = setup_token(&env, &pool_admin1);
-    
+
     client.create_pool(&admin, &symbol_short!("mods"), &token, &pool_admins, &1);
 
     let author = Address::generate(&env);

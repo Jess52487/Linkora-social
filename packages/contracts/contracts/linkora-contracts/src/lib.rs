@@ -541,9 +541,7 @@ impl LinkoraContract {
         env.storage()
             .instance()
             .set(&TIP_COOLDOWN_WINDOW, &TIP_COOLDOWN_LEDGERS);
-        env.storage()
-            .instance()
-            .set(&MODERATION_SLASH_BPS, &0u32);
+        env.storage().instance().set(&MODERATION_SLASH_BPS, &0u32);
     }
 
     // ── Profiles ──────────────────────────────────────────────────────────────
@@ -1913,7 +1911,10 @@ impl LinkoraContract {
             .persistent()
             .get(&report_key)
             .expect("report not found");
-        assert!(report.status == ReportStatus::Pending, "report already resolved");
+        assert!(
+            report.status == ReportStatus::Pending,
+            "report already resolved"
+        );
 
         match verdict {
             ReportStatus::Upheld => {
@@ -1947,7 +1948,9 @@ impl LinkoraContract {
                         .unwrap_or(0u32);
                     if slash_bps > 0 {
                         let profile_key = StorageKey::Profile(author.clone());
-                        if let Some(profile) = env.storage().persistent().get::<_, Profile>(&profile_key) {
+                        if let Some(profile) =
+                            env.storage().persistent().get::<_, Profile>(&profile_key)
+                        {
                             let creator_token = profile.creator_token;
                             let token_client = token::Client::new(&env, &creator_token);
                             let balance = token_client.balance(&author);
@@ -1956,9 +1959,14 @@ impl LinkoraContract {
                                 // Creator tokens are deployed by the token factory contract.
                                 // Linkora contract has no burn authority by default.
                                 // We use burn_from, or gracefully skip if allowance/authority is missing.
-                                let current_allowance = token_client.allowance(&author, &env.current_contract_address());
+                                let current_allowance = token_client
+                                    .allowance(&author, &env.current_contract_address());
                                 if current_allowance >= slash_amount {
-                                    token_client.burn_from(&env.current_contract_address(), &author, &slash_amount);
+                                    token_client.burn_from(
+                                        &env.current_contract_address(),
+                                        &author,
+                                        &slash_amount,
+                                    );
                                 } else {
                                     // Gracefully skip the slash: insufficient burn allowance.
                                     // The rest of the upheld flow (stake refund, post deletion) still completes.
