@@ -3354,6 +3354,9 @@ fn test_get_rent_expiry_minimum() {
 
     let expected_expiry = env.ledger().sequence() + 100_000;
     assert_eq!(client.get_rent_expiry(&user), expected_expiry);
+}
+
+#[test]
 fn test_moderation_happy_path_uphold() {
     let env = Env::default();
     env.mock_all_auths();
