@@ -43,6 +43,9 @@ importers:
 
   apps/mobile:
     dependencies:
+      "@linkora/types":
+        specifier: workspace:*
+        version: link:../../packages/types
       "@walletconnect/sign-client":
         specifier: ^2.23.9
         version: 2.23.9(typescript@5.9.3)(zod@3.25.76)
@@ -58,6 +61,9 @@ importers:
       expo-secure-store:
         specifier: ^12.0.0
         version: 12.8.1(expo@49.0.23(@babel/core@7.29.7))
+      linkora-sdk:
+        specifier: workspace:*
+        version: link:../../packages/sdk
       react:
         specifier: ^18.2.0
         version: 18.3.1
@@ -191,6 +197,19 @@ importers:
         specifier: ^5
         version: 5.9.3
 
+  packages/codegen:
+    dependencies:
+      "@stellar/stellar-sdk":
+        specifier: ^15.1.0
+        version: 15.1.0
+    devDependencies:
+      tsx:
+        specifier: ^4.22.4
+        version: 4.22.4
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
+
   packages/contracts:
     dependencies:
       "@stellar/stellar-sdk":
@@ -231,6 +250,16 @@ importers:
       typedoc:
         specifier: ^0.27.9
         version: 0.27.9(typescript@5.9.3)
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
+
+  packages/types:
+    dependencies:
+      linkora-sdk:
+        specifier: workspace:*
+        version: link:../sdk
+    devDependencies:
       typescript:
         specifier: ^5.8.3
         version: 5.9.3

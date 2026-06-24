@@ -1,34 +1,8 @@
 /**
- * Types representing the data structures returned by the smart contracts
+ * Types representing the data structures returned by the smart contracts.
+ *
+ * These types are auto-generated from the contract ABI and re-exported here.
+ * Run `pnpm codegen` to regenerate from the compiled contract WASM.
  */
 
-export interface Profile {
-  address: string;
-  username: string;
-  creator_token: string;
-  bio?: string | null;
-}
-
-export interface Post {
-  id: number;
-  author: string;
-  content: string;
-  tip_total: number;
-  timestamp: number;
-  like_count: number;
-}
-
-export interface Pool {
-  pool_id: string;
-  token: string;
-  balance: bigint;
-  admins: string[];
-  threshold: number;
-}
-
-export interface CreatorTokenDeployedEvent {
-  deployer: string;
-  token_address: string;
-  name: string;
-  symbol: string;
-}
+export * from "./generated/types";
