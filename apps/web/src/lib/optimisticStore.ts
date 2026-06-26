@@ -12,6 +12,10 @@ export type FollowState = {
   followingCount: number;
 };
 
+export type PendingState = {
+  isPending: boolean;
+};
+
 export type LikeState = {
   isLiked: boolean;
   likeCount: number;
@@ -27,6 +31,8 @@ export type TipState = {
 
 // Key format: `${followerAddress}:${followeeAddress}`
 const followStateMap = new Map<string, FollowState>();
+// Key format: `${followerAddress}:${followeeAddress}`
+const pendingStateMap = new Map<string, PendingState>();
 // Key format: `${userAddress}:${postId}`
 const likeStateMap = new Map<string, LikeState>();
 // Key format: `${postId}`
@@ -66,6 +72,46 @@ export const OptimisticStore = {
     notify();
   },
 
+  setPending(key: string, state: PendingState) {
+    pendingStateMap.set(key, state);
+    notify();
+  },
+
+  getPending(key: string): PendingState | undefined {
+    return pendingStateMap.get(key);
+  },
+
+  clearPending(key: string) {
+    pendingStateMap.delete(key);
+    notify();
+  },
+
+  isFollowing(address: string): boolean {
+    for (const [key, state] of followStateMap) {
+      if (key.endsWith(`:${address}`) && state.isFollowing) {
+        return true;
+      }
+    }
+    return false;
+  },
+
+  setFollowing(address: string, isFollowing: boolean): void {
+    // Find and update all follow states for this address as followee
+    for (const [key, state] of followStateMap) {
+      if (key.endsWith(`:${address}`)) {
+        followStateMap.set(key, { ...state, isFollowing });
+      }
+    }
+    notify();
+  },
+
+  isPending(address: string): boolean {
+    for (const [, state] of pendingStateMap) {
+      if (state.isPending) return true;
+    }
+    return false;
+  },
+
   setLikeState(key: string, state: LikeState) {
     likeStateMap.set(key, state);
     notify();
@@ -92,6 +138,13 @@ export const OptimisticStore = {
   clearTipState(key: string) {
     tipStateMap.delete(key);
     notify();
+  },
+
+  subscribe(listener: () => void): () => void {
+    listeners.add(listener);
+    return () => {
+      listeners.delete(listener);
+    };
   },
 };
 
