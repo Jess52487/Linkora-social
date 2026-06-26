@@ -56,7 +56,7 @@ jest.mock("linkora-sdk", () => ({
   LinkoraClient: jest.fn().mockImplementation(() => ({
     getProfile: jest.fn().mockResolvedValue({
       username: "testuser",
-      creator_token: "GCREATORTOKEN",
+      creator_token: "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
     }),
     getDmKey: jest.fn().mockResolvedValue(null),
     setProfile: jest.fn().mockReturnValue("mockXDR"),
@@ -67,4 +67,28 @@ jest.mock("linkora-sdk", () => ({
     publicKey: new Uint8Array(32),
     privateKey: new Uint8Array(32),
   }),
+}));
+
+// Mock @stellar/stellar-sdk
+jest.mock("@stellar/stellar-sdk", () => ({
+  Transaction: jest.fn().mockImplementation(() => ({})),
+  rpc: {
+    Server: jest.fn().mockImplementation(() => ({
+      sendTransaction: jest.fn().mockResolvedValue({ status: "PENDING", hash: "mockHash" }),
+      getTransaction: jest.fn().mockResolvedValue({ status: "SUCCESS" }),
+    })),
+  },
+}));
+
+// Mock @stellar/freighter-api
+jest.mock("@stellar/freighter-api", () => ({
+  signTransaction: jest.fn().mockResolvedValue("mockSignedXdr"),
+  isConnected: jest.fn().mockResolvedValue(true),
+  getPublicKey: jest
+    .fn()
+    .mockResolvedValue("GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"),
+  getNetwork: jest.fn().mockResolvedValue("TESTNET"),
+  requestAccess: jest
+    .fn()
+    .mockResolvedValue("GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"),
 }));

@@ -38,6 +38,9 @@ export function ProfileSection({ address }: ProfileSectionProps) {
 
   async function handleSubmit(values: ProfileFormValues) {
     try {
+      const { signTransaction } = await import("@stellar/freighter-api");
+      const { rpc: rpcModule, Transaction } = await import("@stellar/stellar-sdk");
+
       const client = new LinkoraClient({
         contractId: process.env.NEXT_PUBLIC_CONTRACT_ID || "",
         rpcUrl: process.env.NEXT_PUBLIC_RPC_URL || "https://soroban-testnet.stellar.org",
@@ -46,10 +49,31 @@ export function ProfileSection({ address }: ProfileSectionProps) {
       // Build transaction XDR
       const txXdr = client.setProfile(address, values.username, values.creatorToken || address);
 
-      // TODO: Sign and submit transaction using wallet
-      console.log("Transaction XDR:", txXdr);
+      const signedXdr = await signTransaction(txXdr, {
+        network: "TESTNET",
+        accountToSign: address,
+      });
+
+      const networkPassphrase =
+        process.env.NEXT_PUBLIC_NETWORK_PASSPHRASE ?? "Test SDF Network ; September 2015";
+      const server = new rpcModule.Server(
+        process.env.NEXT_PUBLIC_RPC_URL ?? "https://soroban-testnet.stellar.org"
+      );
+
+      const tx = new Transaction(signedXdr, networkPassphrase);
+      const result = await server.sendTransaction(tx);
+
+      if (result.status === "ERROR" || result.status === "DUPLICATE") {
+        throw new Error(`Profile registration rejected: ${result.status}`);
+      }
+
+      await waitForConfirmation(server, result.hash);
 
       setSuccessMessage("Profile updated successfully!");
+      setInitialValues({
+        username: values.username,
+        creatorToken: values.creatorToken || address,
+      });
       setTimeout(() => setSuccessMessage(""), 3000);
     } catch (error) {
       console.error("Failed to update profile:", error);
@@ -96,4 +120,20 @@ export function ProfileSection({ address }: ProfileSectionProps) {
       )}
     </section>
   );
+}
+
+async function waitForConfirmation(
+  server: any,
+  hash: string,
+  maxAttempts = 20,
+  intervalMs = 3000
+): Promise<void> {
+  const interval = process.env.NODE_ENV === "test" ? 0 : intervalMs;
+  for (let i = 0; i < maxAttempts; i++) {
+    await new Promise((r) => setTimeout(r, interval));
+    const tx = await server.getTransaction(hash);
+    if (tx.status === "SUCCESS") return;
+    if (tx.status === "FAILED") throw new Error(`Transaction ${hash} failed on-chain.`);
+  }
+  throw new Error(`Transaction ${hash} timed out waiting for confirmation.`);
 }

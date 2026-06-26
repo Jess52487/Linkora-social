@@ -7,6 +7,7 @@ import { ProfileSection } from "@/components/settings/ProfileSection";
 import { WalletSection } from "@/components/settings/WalletSection";
 import { DmKeySection } from "@/components/settings/DmKeySection";
 import { NotificationsSection } from "@/components/settings/NotificationsSection";
+import { BlockListSection } from "@/components/settings/BlockListSection";
 import { GovernanceSection } from "@/components/settings/GovernanceSection";
 import { DangerZoneSection } from "@/components/settings/DangerZoneSection";
 
@@ -38,6 +39,9 @@ export default function SettingsPage() {
 
         {/* Notifications Section */}
         <NotificationsSection />
+
+        {/* Block List Section */}
+        <BlockListSection />
 
         {/* Governance Section */}
         <GovernanceSection address={address} />

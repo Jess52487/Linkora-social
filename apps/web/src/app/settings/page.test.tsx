@@ -117,8 +117,9 @@ describe("SettingsPage", () => {
 
       expect(screen.getByText("Profile")).toBeInTheDocument();
       expect(screen.getByText("Wallet")).toBeInTheDocument();
-      expect(screen.getByText("Direct Messages")).toBeInTheDocument();
+      expect(screen.getAllByText("Direct Messages").length).toBeGreaterThan(0);
       expect(screen.getByText("Notifications")).toBeInTheDocument();
+      expect(screen.getByText("Block List")).toBeInTheDocument();
       expect(screen.getByText("Governance")).toBeInTheDocument();
       expect(screen.getByText("Danger Zone")).toBeInTheDocument();
     });
